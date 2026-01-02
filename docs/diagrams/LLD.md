@@ -62,6 +62,74 @@ CREATE TABLE workers (
 );
 ```
 
+### 1.3 Task Executions Table
+
+**Purpose:** Store bounded execution output for observability and debugging.
+
+```sql
+CREATE TABLE task_executions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
+    attempt INT NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    
+    started_at TIMESTAMP NOT NULL,
+    finished_at TIMESTAMP NOT NULL,
+    duration_ms INT,
+    
+    output JSONB,
+    error TEXT,
+    truncated BOOLEAN DEFAULT false,
+    
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_task_executions_task_id ON task_executions(task_id);
+CREATE INDEX idx_task_executions_status ON task_executions(status);
+```
+
+**Design Principles:**
+- **Separate table** - Keeps core `tasks` table lean
+- **Per-attempt records** - Full execution history
+- **Bounded output** - Max 16KB per execution
+- **Truncatable** - Large outputs truncated with flag
+
+**Output Schema by Job Type:**
+
+**HTTP Tasks:**
+```json
+{
+  "status_code": 200,
+  "headers": {"content-type": "application/json"},
+  "body": "{\"success\": true}",
+  "response_size_bytes": 1234
+}
+```
+
+**Shell Tasks:**
+```json
+{
+  "stdout": "job completed",
+  "stderr": "",
+  "exit_code": 0
+}
+```
+
+**Delay Tasks:**
+```json
+{
+  "message": "Completed delay",
+  "duration_ms": 20000
+}
+```
+
+**Size Limits:**
+- Max output size: 16KB
+- Outputs beyond limit are truncated
+- `truncated=true` flag set when truncation occurs
+
+> **Interview Point:** "Execution output is bounded and truncatable to protect storage and availability."
+
 ---
 
 ## 2. API Implementation

@@ -5,6 +5,7 @@ const tasksRepo = require('../db/repositories/tasks.repo');
 const HeartbeatSender = require('./heartbeat/heartbeat-sender');
 const { executeTask } = require('./executor/task-executor');
 const { generateId } = require('../common/utils/uuid');
+const { truncateOutput } = require('../common/utils/truncate-output');
 
 const WORKER_ID = `worker-${generateId().substring(0, 8)}`;
 const heartbeat = new HeartbeatSender(WORKER_ID);
@@ -57,35 +58,51 @@ const processTask = async (msg) => {
         }
     }, 10000);
 
+    const startedAt = new Date();
+
     // 4. Execute
     try {
         const result = await executeTask(leasedTask);
+        const finishedAt = new Date();
+
+        // Truncate output if needed
+        const { output, truncated } = truncateOutput(result);
+
+        // Record execution
+        await tasksRepo.createExecution({
+            taskId: task_id,
+            attempt: task.attempt || 0,
+            status: 'SUCCESS',
+            startedAt,
+            finishedAt,
+            durationMs: finishedAt - startedAt,
+            output,
+            error: null,
+            truncated
+        });
 
         // 5. Report Success
-        await tasksRepo.updateStatus(task_id, 'SUCCESS', result);
+        await tasksRepo.updateStatus(task_id, 'SUCCESS');
         logger.info(`Task ${task_id} SUCCEEDED`);
     } catch (err) {
+        const finishedAt = new Date();
         logger.error(`Task ${task_id} FAILED`, err);
 
+        // Record failed execution
+        await tasksRepo.createExecution({
+            taskId: task_id,
+            attempt: task.attempt || 0,
+            status: 'FAILED',
+            startedAt,
+            finishedAt,
+            durationMs: finishedAt - startedAt,
+            output: null,
+            error: err.message,
+            truncated: false
+        });
+
         // 6. Report Failure
-        // Calculate backoff in dispatcher, or here?
-        // LLD says "Dispatcher handles retries & DLQ transitions".
-        // But Worker ResultReporter: "Update tasks set status='FAILED', next_retry_at=..."
-        // Let's set it to FAILED. Dispatcher 'RetryLoop' will pick it up and re-dispatch.
-        // We just set status FAILED.
-        // Update: LLD says "FAILED -> retry window -> RETRY_WAIT".
-        // We can compute next_retry_at here if we want worker to do it, or let Dispatcher do it.
-        // LLD Section 2.6: Worker updates status='FAILED', attempt=attempt+1, next_retry_at=...
-
         const nextRetryAt = new Date(Date.now() + Math.min(1000 * Math.pow(2, task.attempt || 0), 60000));
-        // Determine max attempts
-        if ((task.attempt || 0) + 1 >= (task.max_attempts || 5)) {
-            // DLQ logic in Worker or Dispatcher? 
-            // LLD 2.6 says Worker updates to FAILED. LLD 5.5 mentions RetryLoop.
-            // Let's stick to simple: Worker marks FAILED. Dispatcher RetryLoop handles logic.
-        }
-
-        // Let's calculate next retry so RetryLoop picks it up correct time.
         await tasksRepo.updateStatus(task_id, 'FAILED', null, nextRetryAt);
     } finally {
         clearInterval(renewInterval);

@@ -50,6 +50,7 @@ function Jobs() {
             case 'RUNNING': return 'status-running';
             case 'SUCCESS': return 'status-success';
             case 'FAILED': return 'status-failed';
+            case 'DLQ': return 'status-failed';
             default: return '';
         }
     };
@@ -125,21 +126,41 @@ function Jobs() {
                                 <p><strong>Type:</strong> {selectedTask.task.type}</p>
                                 <p><strong>Status:</strong> <span className={`status-badge ${getStatusClass(selectedTask.task.status)}`}>{selectedTask.task.status}</span></p>
                                 <p><strong>Worker:</strong> {selectedTask.task.worker_id || 'Not assigned'}</p>
+                                <p><strong>Created:</strong> {new Date(selectedTask.task.created_at).toLocaleString()}</p>
+                                <p><strong>Scheduled:</strong> {new Date(selectedTask.task.scheduled_at).toLocaleString()}</p>
                             </div>
 
                             <div className="detail-section">
-                                <h4>Execution History</h4>
-                                <p><strong>Attempts:</strong> {(selectedTask.executionHistory.attempts || 0) + 1}</p>
-                                <p><strong>Created:</strong> {new Date(selectedTask.executionHistory.createdAt).toLocaleString()}</p>
-                                <p><strong>Scheduled:</strong> {new Date(selectedTask.executionHistory.scheduledAt).toLocaleString()}</p>
-                                {selectedTask.executionHistory.startedAt && (
-                                    <p><strong>Started:</strong> {new Date(selectedTask.executionHistory.startedAt).toLocaleString()}</p>
-                                )}
-                                {selectedTask.executionHistory.completedAt && (
-                                    <p><strong>Completed:</strong> {new Date(selectedTask.executionHistory.completedAt).toLocaleString()}</p>
-                                )}
-                                {selectedTask.executionHistory.error && (
-                                    <p><strong>Error:</strong> <span className="error-text">{selectedTask.executionHistory.error}</span></p>
+                                <h4>Execution History ({selectedTask.executions?.length || 0} attempts)</h4>
+                                {selectedTask.executions && selectedTask.executions.length > 0 ? (
+                                    selectedTask.executions.map((exec) => (
+                                        <div key={exec.id} style={{
+                                            marginBottom: '15px',
+                                            padding: '10px',
+                                            border: '1px solid #ddd',
+                                            borderRadius: '4px',
+                                            backgroundColor: exec.status === 'SUCCESS' ? '#f0f9ff' : '#fff5f5'
+                                        }}>
+                                            <p><strong>Attempt {exec.attempt + 1}:</strong> <span className={`status-badge ${getStatusClass(exec.status)}`}>{exec.status}</span></p>
+                                            <p><strong>Duration:</strong> {exec.duration_ms}ms</p>
+                                            <p><strong>Started:</strong> {new Date(exec.started_at).toLocaleString()}</p>
+                                            <p><strong>Finished:</strong> {new Date(exec.finished_at).toLocaleString()}</p>
+
+                                            {exec.output && (
+                                                <div>
+                                                    <p><strong>Output:</strong></p>
+                                                    <pre style={{ maxHeight: '200px', overflow: 'auto', fontSize: '12px' }}>{JSON.stringify(exec.output, null, 2)}</pre>
+                                                    {exec.truncated && <span className="error-text">[OUTPUT TRUNCATED]</span>}
+                                                </div>
+                                            )}
+
+                                            {exec.error && (
+                                                <p><strong>Error:</strong> <span className="error-text">{exec.error}</span></p>
+                                            )}
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p>No execution records yet</p>
                                 )}
                             </div>
 

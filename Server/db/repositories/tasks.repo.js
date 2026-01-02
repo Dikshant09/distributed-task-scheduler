@@ -211,6 +211,40 @@ const deleteDLQTasksOlderThan = async (retentionDays) => {
   return res.rows.length;
 };
 
+/**
+ * Create execution record
+ */
+const createExecution = async (execution) => {
+  const { taskId, attempt, status, startedAt, finishedAt, durationMs, output, error, truncated } = execution;
+
+  const query = `
+    INSERT INTO task_executions 
+    (task_id, attempt, status, started_at, finished_at, duration_ms, output, error, truncated)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    RETURNING *;
+  `;
+
+  const res = await db.query(query, [
+    taskId, attempt, status, startedAt, finishedAt, durationMs, output, error, truncated
+  ]);
+
+  return res.rows[0];
+};
+
+/**
+ * Get execution history for a task
+ */
+const getExecutionHistory = async (taskId) => {
+  const query = `
+    SELECT * FROM task_executions
+    WHERE task_id = $1
+    ORDER BY attempt DESC;
+  `;
+
+  const res = await db.query(query, [taskId]);
+  return res.rows;
+};
+
 module.exports = {
   createTask,
   getPendingTasks,
@@ -225,5 +259,8 @@ module.exports = {
   moveToDLQ,
   getDLQTasks,
   resetFromDLQ,
-  deleteDLQTasksOlderThan
+  deleteDLQTasksOlderThan,
+  // Execution methods
+  createExecution,
+  getExecutionHistory
 };

@@ -38,25 +38,14 @@ const getJob = async (req, res, next) => {
             throw new NotFoundError(`Task with ID ${id} not found`);
         }
 
-        // Get execution history (state transitions, retry attempts)
-        // For now, we'll include the task data with attempts count
-        // In a full implementation, we'd have a separate execution_log table
-        const executionHistory = {
-            attempts: task.attempt || 0,
-            status: task.status,
-            createdAt: task.created_at,
-            scheduledAt: task.scheduled_at,
-            startedAt: task.started_at,
-            completedAt: task.completed_at,
-            workerId: task.assigned_worker_id,
-            error: task.error
-        };
+        // Get execution history from task_executions table
+        const executions = await tasksRepo.getExecutionHistory(id);
 
         res.status(200).json({
             status: 'success',
             data: {
                 task,
-                executionHistory
+                executions
             }
         });
     } catch (error) {
