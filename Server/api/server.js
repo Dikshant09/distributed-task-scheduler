@@ -9,6 +9,8 @@ const errorHandler = require('./middlewares/error-handler');
 const jobRoutes = require('./routes/jobs.routes');
 const healthRoutes = require('./routes/health.routes');
 const workerRoutes = require('./routes/workers.routes');
+const systemRoutes = require('./routes/system.routes');
+const adminRoutes = require('./routes/admin.routes');
 
 const app = express();
 
@@ -21,6 +23,8 @@ app.use(requestLogger);
 app.use('/health', healthRoutes);
 app.use('/tasks', jobRoutes);
 app.use('/workers', workerRoutes);
+app.use('/system', systemRoutes);
+app.use('/admin', adminRoutes);
 
 // Error Handler
 app.use(errorHandler);

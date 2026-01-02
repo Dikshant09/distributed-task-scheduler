@@ -56,6 +56,21 @@ class LeaderElection extends EventEmitter {
         // Let's assume we read a global counter.
         return Date.now(); // Simplified epoch
     }
+
+    // Helper methods for system status API
+    checkIsLeader() {
+        return this.isLeader;
+    }
+
+    getLeaderId() {
+        return this.id;
+    }
+
+    getLeaderUptime() {
+        // Return uptime in seconds since becoming leader
+        // For now, simplified - would track actual election time
+        return this.isLeader ? Math.floor(process.uptime()) : 0;
+    }
 }
 
 module.exports = new LeaderElection();

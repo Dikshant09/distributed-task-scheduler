@@ -56,10 +56,21 @@ const ack = async (messageId) => {
     await redis.xack(STREAM_NAME, CONSUMER_GROUP, messageId);
 };
 
+const getPendingCount = async () => {
+    try {
+        const pending = await redis.xpending(STREAM_NAME, CONSUMER_GROUP);
+        return { count: pending[0] || 0 };
+    } catch (err) {
+        logger.error('Error getting pending count', err);
+        return { count: 0 };
+    }
+};
+
 module.exports = {
     pushTask,
     consume,
     ack,
     initGroup,
+    getPendingCount,
     redis // export client for clean shutdown if needed
 };
