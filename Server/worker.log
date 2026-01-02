@@ -1,0 +1,11 @@
+
+> distributed-task-scheduler-server@1.0.0 dev:worker
+> nodemon worker/index.js
+
+[33m[nodemon] 3.1.11[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[32m[nodemon] starting `node worker/index.js`[39m
+{"level":"info","message":"Starting Worker worker-485d2c7c","service":"task-scheduler","timestamp":"2026-01-02T09:51:58.786Z"}
+{"level":"info","message":"Heartbeat sender started for worker worker-485d2c7c","service":"task-scheduler","timestamp":"2026-01-02T09:51:58.794Z"}

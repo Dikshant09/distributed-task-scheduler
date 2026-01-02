@@ -1,0 +1,18 @@
+
+> distributed-task-scheduler-server@1.0.0 dev:api
+> nodemon api/server.js
+
+[33m[nodemon] 3.1.11[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[32m[nodemon] starting `node api/server.js`[39m
+{"level":"info","message":"API Service running on port 3000","service":"task-scheduler","timestamp":"2026-01-02T09:52:17.810Z"}
+{"ip":"::1","level":"info","message":"Incoming Request: GET /tasks","requestId":"163cfafe-5661-49ac-b721-4a6394e8d1b0","service":"task-scheduler","timestamp":"2026-01-02T09:52:18.197Z"}
+{"ip":"::1","level":"info","message":"Incoming Request: GET /workers","requestId":"3862a64e-5918-41c3-9eb8-de957a2c911a","service":"task-scheduler","timestamp":"2026-01-02T09:52:18.204Z"}
+{"ip":"::1","level":"info","message":"Incoming Request: GET /workers","requestId":"6fade781-d95c-4910-a96d-c1a9ad5ca895","service":"task-scheduler","timestamp":"2026-01-02T09:52:20.195Z"}
+{"ip":"::1","level":"info","message":"Incoming Request: GET /tasks","requestId":"68b8ad66-72d8-42d5-89c4-22d955ccab45","service":"task-scheduler","timestamp":"2026-01-02T09:52:20.196Z"}
+{"ip":"::1","level":"info","message":"Incoming Request: GET /tasks","requestId":"151c5f19-f172-4a5f-8604-22914c61527a","service":"task-scheduler","timestamp":"2026-01-02T09:52:22.192Z"}
+{"ip":"::1","level":"info","message":"Incoming Request: GET /workers","requestId":"5c83033d-489c-44a9-a712-e2d754990357","service":"task-scheduler","timestamp":"2026-01-02T09:52:22.193Z"}
+{"ip":"::1","level":"info","message":"Incoming Request: GET /tasks","requestId":"d30fe6c7-2873-4ed6-870b-68dbdee9e6f9","service":"task-scheduler","timestamp":"2026-01-02T09:52:24.197Z"}
+{"ip":"::1","level":"info","message":"Incoming Request: GET /workers","requestId":"1fb5bd09-2e99-4f00-94ac-603a66e72094","service":"task-scheduler","timestamp":"2026-01-02T09:52:24.199Z"}
