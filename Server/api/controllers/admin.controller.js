@@ -110,10 +110,78 @@ const pauseQueue = async (req, res, next) => {
     }
 };
 
+/**
+ * GET /admin/dlq
+ * Get all tasks in Dead Letter Queue
+ */
+const getDLQTasks = async (req, res, next) => {
+    try {
+        const tasksRepo = require('../../db/repositories/tasks.repo');
+        const dlqTasks = await tasksRepo.getDLQTasks(100);
+
+        res.json({
+            status: 'success',
+            data: { tasks: dlqTasks, count: dlqTasks.length }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * POST /admin/dlq/:id/retry
+ * Manually retry a task from DLQ
+ */
+const retryFromDLQ = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const dlqHandler = require('../../scheduler/dead-letter/dlq-handler');
+
+        const success = await dlqHandler.retryFromDLQ(id);
+
+        if (success) {
+            res.json({
+                status: 'success',
+                message: `Task ${id} reset from DLQ and will be retried`
+            });
+        } else {
+            res.status(400).json({
+                status: 'error',
+                message: `Failed to retry task ${id} from DLQ`
+            });
+        }
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * POST /admin/dlq/cleanup
+ * Clean up old DLQ tasks
+ */
+const cleanupDLQ = async (req, res, next) => {
+    try {
+        const { retentionDays = 30 } = req.body;
+        const dlqHandler = require('../../scheduler/dead-letter/dlq-handler');
+
+        await dlqHandler.cleanupOldTasks(retentionDays);
+
+        res.json({
+            status: 'success',
+            message: `DLQ cleanup initiated for tasks older than ${retentionDays} days`
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     enableScheduler,
     disableScheduler,
     killLeader,
     killWorker,
-    pauseQueue
+    pauseQueue,
+    getDLQTasks,
+    retryFromDLQ,
+    cleanupDLQ
 };

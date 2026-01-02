@@ -95,7 +95,6 @@ const updateStatus = async (id, status, result = null, nextRetryAt = null) => {
     params.push(nextRetryAt);
   } else if (status === 'SUCCESS') {
     // maybe store result in payload or separate table?
-    // For now assuming result is logged or stored elsewhere, or we add result column.
     // LLD didn't specify result column, just status.
   }
 
@@ -109,6 +108,109 @@ const getTaskById = async (id) => {
   return res.rows[0];
 };
 
+// ============ RETRY & DLQ METHODS ============
+
+/**
+ * Get tasks that are ready for retry
+ * FAILED tasks where next_retry_at <= NOW()
+ */
+const getRetryableTasks = async (limit = 100) => {
+  const query = `
+    SELECT id, attempt, max_attempts, type
+    FROM tasks
+    WHERE status = 'FAILED'
+    AND next_retry_at IS NOT NULL
+    AND next_retry_at <= NOW()
+    LIMIT $1;
+  `;
+  const res = await db.query(query, [limit]);
+  return res.rows;
+};
+
+/**
+ * Reset a FAILED task back to PENDING for retry
+ */
+const resetForRetry = async (taskId) => {
+  const query = `
+    UPDATE tasks
+    SET status = 'PENDING',
+        next_retry_at = NULL,
+        assigned_worker_id = NULL,
+        lease_expiry = NULL,
+        updated_at = NOW()
+    WHERE id = $1
+    RETURNING *;
+  `;
+  const res = await db.query(query, [taskId]);
+  return res.rows[0];
+};
+
+/**
+ * Move a task to DLQ (Dead Letter Queue)
+ */
+const moveToDLQ = async (taskId, reason) => {
+  const query = `
+    UPDATE tasks
+    SET status = 'DLQ',
+        dlq_reason = $2,
+        updated_at = NOW()
+    WHERE id = $1
+    RETURNING *;
+  `;
+  const res = await db.query(query, [taskId, reason]);
+  return res.rows[0];
+};
+
+/**
+ * Get all tasks in DLQ
+ */
+const getDLQTasks = async (limit = 100) => {
+  const query = `
+    SELECT id, type, attempt, max_attempts, dlq_reason, created_at
+    FROM tasks
+    WHERE status = 'DLQ'
+    ORDER BY updated_at DESC
+    LIMIT $1;
+  `;
+  const res = await db.query(query, [limit]);
+  return res.rows;
+};
+
+/**
+ * Reset a task from DLQ back to PENDING
+ * Used for manual retry from admin interface
+ */
+const resetFromDLQ = async (taskId) => {
+  const query = `
+    UPDATE tasks
+    SET status = 'PENDING',
+        dlq_reason = NULL,
+        attempt = 0,
+        next_retry_at = NULL,
+        assigned_worker_id = NULL,
+        lease_expiry = NULL,
+        updated_at = NOW()
+    WHERE id = $1 AND status = 'DLQ'
+    RETURNING *;
+  `;
+  const res = await db.query(query, [taskId]);
+  return res.rows[0];
+};
+
+/**
+ * Delete DLQ tasks older than retention period
+ */
+const deleteDLQTasksOlderThan = async (retentionDays) => {
+  const query = `
+    DELETE FROM tasks
+    WHERE status = 'DLQ'
+    AND updated_at < NOW() - ($1 || ' days')::INTERVAL
+    RETURNING id;
+  `;
+  const res = await db.query(query, [retentionDays]);
+  return res.rows.length;
+};
+
 module.exports = {
   createTask,
   getPendingTasks,
@@ -116,5 +218,12 @@ module.exports = {
   acquireLease,
   renewLease,
   updateStatus,
-  getTaskById
+  getTaskById,
+  // Retry & DLQ methods
+  getRetryableTasks,
+  resetForRetry,
+  moveToDLQ,
+  getDLQTasks,
+  resetFromDLQ,
+  deleteDLQTasksOlderThan
 };

@@ -15,8 +15,8 @@ class Dispatcher {
     start() {
         this.isRunning = true;
         this.dispatchInterval = setInterval(() => this._dispatchLoop(), config.scheduler.dispatchInterval);
-        // this.retryInterval = setInterval(() => this._retryLoop(), 5000); // Retry loop roughly every 5s
-        logger.info('Dispatcher started');
+        this.retryInterval = setInterval(() => this._retryLoop(), 5000); // Retry loop every 5s
+        logger.info('Dispatcher started (dispatch + retry loops)');
     }
 
     stop() {
@@ -63,17 +63,44 @@ class Dispatcher {
         }
     }
 
-    // Retry loop handles FAILED -> DISPATCHED transitions?
-    // Current logic: Worker sets FAILED + next_retry_at.
-    // We need a loop to find FAILED tasks where next_retry_at <= NOW() and reset them to PENDING/DISPATCHED?
-    // Or just pick them up in getPendingTasks if we modify the query?
-    // getPendingTasks query: status='PENDING'.
-    // We should prob have a separate process that moves FAILED -> PENDING when time is up.
-    // Let's add that logic here or in _retryLoop.
-
+    /**
+     * Retry Loop
+     * Handles FAILED tasks that are ready for retry:
+     * 1. Find FAILED tasks where next_retry_at <= NOW()
+     * 2. Check if they haven't exceeded max_attempts
+     * 3. Reset them to PENDING for re-dispatch
+     * 4. Move to DLQ if max attempts exceeded
+     */
     async _retryLoop() {
-        // TODO: Implement picking up FAILED tasks ready for retry and setting them to PENDING
-        // tasksRepo.resetFailedTasks();
+        if (!leaderElection.isLeader) return;
+
+        try {
+            const retryableTasks = await tasksRepo.getRetryableTasks();
+
+            if (retryableTasks.length === 0) return;
+
+            logger.info(`Found ${retryableTasks.length} tasks ready for retry`);
+
+            for (const task of retryableTasks) {
+                try {
+                    // Check if max attempts exceeded
+                    if (task.attempt >= task.max_attempts) {
+                        // Move to DLQ
+                        await tasksRepo.moveToDLQ(task.id, 'Max retry attempts exceeded');
+                        logger.warn(`Task ${task.id} moved to DLQ after ${task.attempt} attempts`);
+                    } else {
+                        // Reset to PENDING for retry
+                        await tasksRepo.resetForRetry(task.id);
+                        logger.info(`Task ${task.id} reset to PENDING for retry (attempt ${task.attempt + 1})`);
+                    }
+                } catch (err) {
+                    logger.error(`Failed to process retry for task ${task.id}`, err);
+                }
+            }
+
+        } catch (err) {
+            logger.error('Retry loop error', err);
+        }
     }
 }
 
