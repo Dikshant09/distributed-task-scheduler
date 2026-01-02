@@ -34,6 +34,7 @@ createdb -O "user" task_scheduler 2>/dev/null || echo "Database already exists"
 # Apply migrations
 echo "📝 Applying database migrations..."
 psql -U "user" -d task_scheduler -f Server/db/migrations/001_init.sql
+psql -U "user" -d task_scheduler -f Server/db/migrations/002_add_task_executions.sql
 
 # Create .env symlink in Server directory
 echo "🔗 Creating .env symlink..."
