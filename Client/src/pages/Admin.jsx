@@ -84,6 +84,11 @@ function Admin() {
                 {workers.length === 0 && (
                     <p className="no-data">No active workers</p>
                 )}
+                {workers.length > 10 && (
+                    <p style={{ fontStyle: 'italic', color: '#666', marginTop: '10px' }}>
+                        Showing 10 of {workers.length} workers
+                    </p>
+                )}
             </div>
         </div>
     );
