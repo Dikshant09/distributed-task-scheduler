@@ -48,7 +48,7 @@ const getJob = async (req, res, next) => {
             scheduledAt: task.scheduled_at,
             startedAt: task.started_at,
             completedAt: task.completed_at,
-            workerId: task.worker_id,
+            workerId: task.assigned_worker_id,
             error: task.error
         };
 
@@ -68,7 +68,7 @@ const getTasks = async (req, res, next) => {
     try {
         const { status, limit = 50 } = req.query;
 
-        let query = 'SELECT * FROM tasks';
+        let query = 'SELECT *, assigned_worker_id as worker_id FROM tasks';
         const params = [];
 
         if (status) {
