@@ -7,10 +7,17 @@
 [33m[nodemon] watching path(s): *.*[39m
 [33m[nodemon] watching extensions: js,mjs,cjs,json[39m
 [32m[nodemon] starting `node scheduler/index.js`[39m
-{"level":"info","message":"Starting Scheduler Service...","service":"task-scheduler","timestamp":"2026-01-02T09:51:58.878Z"}
-{"level":"info","message":"Starting campaign for leadership as scheduler-dpbyxzwd5","service":"task-scheduler","timestamp":"2026-01-02T09:51:58.888Z"}
-{"level":"info","message":"I am the leader (scheduler-dpbyxzwd5)","service":"task-scheduler","timestamp":"2026-01-02T09:51:58.923Z"}
-{"level":"info","message":"Became Leader. Starting services...","service":"task-scheduler","timestamp":"2026-01-02T09:51:58.923Z"}
-{"level":"info","message":"Dispatcher started","service":"task-scheduler","timestamp":"2026-01-02T09:51:58.923Z"}
-{"level":"info","message":"Worker Monitor started","service":"task-scheduler","timestamp":"2026-01-02T09:51:58.923Z"}
-{"level":"info","message":"DLQ Handler started","service":"task-scheduler","timestamp":"2026-01-02T09:51:58.923Z"}
+{"level":"info","message":"Starting Scheduler Service...","service":"task-scheduler","timestamp":"2026-01-02T10:10:11.489Z"}
+{"level":"info","message":"Starting campaign for leadership as scheduler-1l2sbvw59","service":"task-scheduler","timestamp":"2026-01-02T10:10:11.499Z"}
+{"level":"info","message":"I am the leader (scheduler-1l2sbvw59)","service":"task-scheduler","timestamp":"2026-01-02T10:10:11.547Z"}
+{"level":"info","message":"Became Leader. Starting services...","service":"task-scheduler","timestamp":"2026-01-02T10:10:11.547Z"}
+{"level":"info","message":"Dispatcher started","service":"task-scheduler","timestamp":"2026-01-02T10:10:11.547Z"}
+{"level":"info","message":"Worker Monitor started","service":"task-scheduler","timestamp":"2026-01-02T10:10:11.547Z"}
+{"level":"info","message":"DLQ Handler started","service":"task-scheduler","timestamp":"2026-01-02T10:10:11.547Z"}
+{"0":{"worker_id":"worker-485d2c7c"},"level":"warn","message":"Found 1 dead workers","service":"task-scheduler","timestamp":"2026-01-02T10:10:26.555Z"}
+{"0":{"worker_id":"worker-485d2c7c"},"level":"warn","message":"Found 1 dead workers","service":"task-scheduler","timestamp":"2026-01-02T10:10:41.550Z"}
+{"level":"info","message":"Found 1 pending tasks","service":"task-scheduler","timestamp":"2026-01-02T10:10:46.572Z"}
+{"level":"info","message":"Dispatched 1 tasks","service":"task-scheduler","timestamp":"2026-01-02T10:10:46.579Z"}
+{"0":{"worker_id":"worker-485d2c7c"},"level":"warn","message":"Found 1 dead workers","service":"task-scheduler","timestamp":"2026-01-02T10:10:56.550Z"}
+{"0":{"worker_id":"worker-485d2c7c"},"level":"warn","message":"Found 1 dead workers","service":"task-scheduler","timestamp":"2026-01-02T10:11:11.550Z"}
+{"0":{"worker_id":"worker-485d2c7c"},"level":"warn","message":"Found 1 dead workers","service":"task-scheduler","timestamp":"2026-01-02T10:11:26.551Z"}
