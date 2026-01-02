@@ -25,6 +25,43 @@ A fault-tolerant distributed task scheduler built with Node.js, React, PostgreSQ
    ```
 3. Open Dashboard at `http://localhost:5173`.
 
+```bash
+./run.sh
+```
+
+Access the UI at `http://localhost:5173`
+
+### Leader Election Failover Demo
+
+To demonstrate leader election and automatic failover:
+
+```bash
+# Stop normal services
+./stop.sh
+
+# Start with 2 scheduler instances
+./demo-leader-election.sh
+```
+
+**What this does:**
+- Starts 2 scheduler instances (one leader, one standby)
+- When you click "Kill Leader" in the UI, the standby automatically becomes leader
+- System continues operating without interruption
+
+**Check leader status:**
+```bash
+tail -f logs/scheduler1.log | grep -i leader
+tail -f logs/scheduler2.log | grep -i leader
+```
+
+See [docs/LEADER_ELECTION_DEMO.md](docs/LEADER_ELECTION_DEMO.md) for details.
+
+## Stop Services
+
+```bash
+./stop.sh
+```
+
 ## Architecture
 - **API**: Accepts tasks, writes to DB.
 - **Scheduler**: Leader watches DB, dispatches to Redis.

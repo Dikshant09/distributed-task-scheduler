@@ -14,7 +14,9 @@ class LeaderElection extends EventEmitter {
     }
 
     async start() {
-        this.election = client.election(this.key);
+        // Create election with 10-second TTL for faster failover
+        // When leader dies, standby will detect within ~10 seconds
+        this.election = client.election(this.key, 10);
         this._campaign();
     }
 

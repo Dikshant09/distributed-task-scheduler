@@ -51,17 +51,12 @@ const disableScheduler = async (req, res, next) => {
  */
 const killLeader = async (req, res, next) => {
     try {
-        logger.warn('FAULT INJECTION: Killing leader process');
+        logger.warn('FAULT INJECTION: Kill leader requested (not supported when API runs separately from scheduler)');
 
         res.json({
-            status: 'success',
-            message: 'Leader process will terminate in 1 second'
+            status: 'error',
+            message: 'Kill leader not supported when API runs separately from scheduler. Use: pkill -f "node.*scheduler/index.js" to manually kill a scheduler instance.'
         });
-
-        // Give response time to send before killing
-        setTimeout(() => {
-            process.exit(1);
-        }, 1000);
     } catch (error) {
         next(error);
     }

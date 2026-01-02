@@ -1,5 +1,5 @@
 const logger = require('../../common/logger');
-const leaderElection = require('../../scheduler/leader-election/leader-election');
+const etcdClient = require('../../scheduler/leader-election/etcd-client');
 const redisQueue = require('../../queue/redis-queue');
 const workersRepo = require('../../db/repositories/workers.repo');
 const db = require('../../db');
@@ -10,10 +10,15 @@ const db = require('../../db');
  */
 const getSystemStatus = async (req, res, next) => {
     try {
-        // Get scheduler status
-        const isLeader = leaderElection.checkIsLeader();
-        const leaderId = leaderElection.getLeaderId();
-        const leaderUptime = leaderElection.getLeaderUptime();
+        // Get current leader from Etcd directly (API doesn't participate in election)
+        let leaderId = 'N/A';
+        try {
+            const election = etcdClient.election('/scheduler/leader');
+            const leader = await election.leader();
+            leaderId = leader ? leader.toString() : 'N/A';
+        } catch (err) {
+            logger.debug('Could not fetch leader from Etcd', err);
+        }
 
         // Get worker count
         const activeWorkers = await workersRepo.getActiveWorkers();
@@ -58,9 +63,9 @@ const getSystemStatus = async (req, res, next) => {
             data: {
                 scheduler: {
                     enabled: true, // TODO: Add actual enable/disable state
-                    isLeader,
+                    isLeader: false, // API doesn't participate in election
                     leaderId: leaderId || 'none',
-                    leaderUptime: leaderUptime || 0,
+                    leaderUptime: 0, // Not applicable for API
                     dispatchLag
                 },
                 workers: {
