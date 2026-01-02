@@ -1,0 +1,118 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug API Server",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/Server/api/server.js",
+            "cwd": "${workspaceFolder}/Server",
+            "env": {
+                "NODE_ENV": "development"
+            },
+            "console": "integratedTerminal",
+            "outputCapture": "std"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Scheduler",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/Server/scheduler/index.js",
+            "cwd": "${workspaceFolder}/Server",
+            "env": {
+                "NODE_ENV": "development"
+            },
+            "console": "integratedTerminal",
+            "outputCapture": "std"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Worker",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/Server/worker/index.js",
+            "cwd": "${workspaceFolder}/Server",
+            "env": {
+                "NODE_ENV": "development"
+            },
+            "console": "integratedTerminal",
+            "outputCapture": "std"
+        },
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Debug Client (Chrome)",
+            "url": "http://localhost:5173",
+            "webRoot": "${workspaceFolder}/Client",
+            "sourceMaps": true,
+            "preLaunchTask": "npm: dev - Client"
+        },
+        {
+            "type": "node",
+            "request": "attach",
+            "name": "Attach to API",
+            "port": 9229,
+            "restart": true,
+            "skipFiles": [
+                "<node_internals>/**"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "attach",
+            "name": "Attach to Scheduler",
+            "port": 9230,
+            "restart": true,
+            "skipFiles": [
+                "<node_internals>/**"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "attach",
+            "name": "Attach to Worker",
+            "port": 9231,
+            "restart": true,
+            "skipFiles": [
+                "<node_internals>/**"
+            ]
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Debug All Backend Services",
+            "configurations": [
+                "Debug API Server",
+                "Debug Scheduler",
+                "Debug Worker"
+            ],
+            "presentation": {
+                "hidden": false,
+                "group": "backend",
+                "order": 1
+            }
+        },
+        {
+            "name": "Debug Full Stack",
+            "configurations": [
+                "Debug API Server",
+                "Debug Scheduler",
+                "Debug Worker",
+                "Debug Client (Chrome)"
+            ],
+            "presentation": {
+                "hidden": false,
+                "group": "fullstack",
+                "order": 1
+            }
+        }
+    ]
+}
