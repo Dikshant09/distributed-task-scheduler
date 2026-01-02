@@ -96,7 +96,7 @@ function Jobs() {
                                         </span>
                                     </td>
                                     <td>{task.worker_id ? task.worker_id.substring(0, 8) + '...' : '-'}</td>
-                                    <td>{task.attempts || 0}</td>
+                                    <td>{(task.attempt || 0) + 1}</td>
                                     <td>{new Date(task.scheduled_at).toLocaleString()}</td>
                                     <td>
                                         <button
@@ -129,7 +129,7 @@ function Jobs() {
 
                             <div className="detail-section">
                                 <h4>Execution History</h4>
-                                <p><strong>Attempts:</strong> {selectedTask.executionHistory.attempts}</p>
+                                <p><strong>Attempts:</strong> {(selectedTask.executionHistory.attempts || 0) + 1}</p>
                                 <p><strong>Created:</strong> {new Date(selectedTask.executionHistory.createdAt).toLocaleString()}</p>
                                 <p><strong>Scheduled:</strong> {new Date(selectedTask.executionHistory.scheduledAt).toLocaleString()}</p>
                                 {selectedTask.executionHistory.startedAt && (
