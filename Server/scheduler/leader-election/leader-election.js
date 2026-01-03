@@ -2,6 +2,7 @@ const client = require('./etcd-client');
 const config = require('../../common/config');
 const logger = require('../../common/logger');
 const { EventEmitter } = require('events');
+const eventLogger = require('../../common/event-logger');
 
 class LeaderElection extends EventEmitter {
     constructor() {
@@ -29,6 +30,11 @@ class LeaderElection extends EventEmitter {
             campaign.on('elected', () => {
                 this.isLeader = true;
                 logger.info(`I am the leader (${this.id})`);
+
+                eventLogger.log('LEADER_ELECTED', `Scheduler ${this.id} elected as leader`, {
+                    schedulerId: this.id
+                });
+
                 this.emit('elected');
             });
 

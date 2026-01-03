@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { getTasks, getTaskById, runTaskNow } from '../api/api';
 import './Jobs.css';
+import { useNavigate } from 'react-router-dom';
 
 function Jobs() {
+    const navigate = useNavigate();
     const [tasks, setTasks] = useState([]);
     const [filter, setFilter] = useState('');
-    const [selectedTask, setSelectedTask] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -26,13 +27,8 @@ function Jobs() {
         return () => clearInterval(interval);
     }, [filter]);
 
-    const handleRowClick = async (taskId) => {
-        try {
-            const res = await getTaskById(taskId);
-            setSelectedTask(res.data.data);
-        } catch (err) {
-            console.error('Failed to fetch task details', err);
-        }
+    const handleRowClick = (taskId) => {
+        navigate(`/jobs/${taskId}`);
     };
 
     const handleRunNow = async (taskId) => {
@@ -113,67 +109,10 @@ function Jobs() {
                     </table>
                 </div>
 
-                {selectedTask && (
-                    <div className="job-detail-drawer">
-                        <div className="drawer-header">
-                            <h3>Job Details</h3>
-                            <button className="close-btn" onClick={() => setSelectedTask(null)}>×</button>
-                        </div>
-                        <div className="drawer-content">
-                            <div className="detail-section">
-                                <h4>Task Information</h4>
-                                <p><strong>ID:</strong> {selectedTask.task.id}</p>
-                                <p><strong>Type:</strong> {selectedTask.task.type}</p>
-                                <p><strong>Status:</strong> <span className={`status-badge ${getStatusClass(selectedTask.task.status)}`}>{selectedTask.task.status}</span></p>
-                                <p><strong>Worker:</strong> {selectedTask.task.worker_id || 'Not assigned'}</p>
-                                <p><strong>Created:</strong> {new Date(selectedTask.task.created_at).toLocaleString()}</p>
-                                <p><strong>Scheduled:</strong> {new Date(selectedTask.task.scheduled_at).toLocaleString()}</p>
-                            </div>
-
-                            <div className="detail-section">
-                                <h4>Execution History ({selectedTask.executions?.length || 0} attempts)</h4>
-                                {selectedTask.executions && selectedTask.executions.length > 0 ? (
-                                    selectedTask.executions.map((exec) => (
-                                        <div key={exec.id} style={{
-                                            marginBottom: '15px',
-                                            padding: '10px',
-                                            border: '1px solid #ddd',
-                                            borderRadius: '4px',
-                                            backgroundColor: exec.status === 'SUCCESS' ? '#f0f9ff' : '#fff5f5'
-                                        }}>
-                                            <p><strong>Attempt {exec.attempt + 1}:</strong> <span className={`status-badge ${getStatusClass(exec.status)}`}>{exec.status}</span></p>
-                                            <p><strong>Duration:</strong> {exec.duration_ms}ms</p>
-                                            <p><strong>Started:</strong> {new Date(exec.started_at).toLocaleString()}</p>
-                                            <p><strong>Finished:</strong> {new Date(exec.finished_at).toLocaleString()}</p>
-
-                                            {exec.output && (
-                                                <div>
-                                                    <p><strong>Output:</strong></p>
-                                                    <pre style={{ maxHeight: '200px', overflow: 'auto', fontSize: '12px' }}>{JSON.stringify(exec.output, null, 2)}</pre>
-                                                    {exec.truncated && <span className="error-text">[OUTPUT TRUNCATED]</span>}
-                                                </div>
-                                            )}
-
-                                            {exec.error && (
-                                                <p><strong>Error:</strong> <span className="error-text">{exec.error}</span></p>
-                                            )}
-                                        </div>
-                                    ))
-                                ) : (
-                                    <p>No execution records yet</p>
-                                )}
-                            </div>
-
-                            <div className="detail-section">
-                                <h4>Payload</h4>
-                                <pre>{JSON.stringify(selectedTask.task.payload, null, 2)}</pre>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );
 }
+
 
 export default Jobs;

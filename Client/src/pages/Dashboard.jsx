@@ -130,7 +130,7 @@ function Dashboard() {
             )}
 
             {/* Event Timeline */}
-            <EventTimeline />
+            <EventTimeline scope="dashboard" />
 
             {/* System Metrics */}
             <h3>System Metrics</h3>

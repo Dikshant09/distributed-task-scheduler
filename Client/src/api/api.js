@@ -28,6 +28,12 @@ export const killWorker = (workerId) => api.post('/admin/faults/kill-worker', { 
 export const pauseQueue = (duration) => api.post('/admin/faults/pause-queue', { duration });
 
 // Events
-export const getEvents = (limit = 50) => api.get(`/events?limit=${limit}`);
+export const getEvents = (params) => {
+    // Support both legacy number format and new params object
+    if (typeof params === 'number') {
+        return api.get(`/events?limit=${params}`);
+    }
+    return api.get('/events', { params });
+};
 
 export default api;

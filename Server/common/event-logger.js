@@ -1,14 +1,22 @@
-const db = require('../db');
 const logger = require('./logger');
+const Redis = require('ioredis');
 
 /**
  * Event logger for tracking system events
- * Events are stored in memory (last 100) and can be extended to database
+ * Uses Redis for cross-process event sharing
  */
 class EventLogger {
     constructor() {
-        this.events = [];
-        this.maxEvents = 100;
+        this.redis = new Redis({
+            host: 'localhost',
+            port: 6379,
+            retryStrategy: (times) => {
+                const delay = Math.min(times * 50, 2000);
+                return delay;
+            }
+        });
+        this.eventsKey = 'system:events';
+        this.maxEvents = 200; // Keep more events in Redis
     }
 
     /**
@@ -17,7 +25,7 @@ class EventLogger {
      * @param {string} message - Human-readable message
      * @param {object} metadata - Additional event data
      */
-    log(type, message, metadata = {}) {
+    async log(type, message, metadata = {}) {
         const event = {
             id: Date.now() + Math.random().toString(36).substr(2, 9),
             type,
@@ -26,14 +34,17 @@ class EventLogger {
             timestamp: new Date().toISOString()
         };
 
-        this.events.unshift(event); // Add to beginning
+        try {
+            // Add to Redis list (LPUSH adds to beginning)
+            await this.redis.lpush(this.eventsKey, JSON.stringify(event));
 
-        // Keep only last N events
-        if (this.events.length > this.maxEvents) {
-            this.events = this.events.slice(0, this.maxEvents);
+            // Trim to keep only last N events
+            await this.redis.ltrim(this.eventsKey, 0, this.maxEvents - 1);
+
+            logger.info(`[EVENT] ${type}: ${message}`, metadata);
+        } catch (err) {
+            logger.error('Failed to log event to Redis', err);
         }
-
-        logger.info(`[EVENT] ${type}: ${message}`, metadata);
     }
 
     /**
@@ -41,8 +52,14 @@ class EventLogger {
      * @param {number} limit - Number of events to return
      * @returns {Array} Recent events
      */
-    getRecent(limit = 50) {
-        return this.events.slice(0, limit);
+    async getRecent(limit = 50) {
+        try {
+            const events = await this.redis.lrange(this.eventsKey, 0, limit - 1);
+            return events.map(e => JSON.parse(e));
+        } catch (err) {
+            logger.error('Failed to get events from Redis', err);
+            return [];
+        }
     }
 
     /**
@@ -51,16 +68,26 @@ class EventLogger {
      * @param {number} limit - Number of events to return
      * @returns {Array} Filtered events
      */
-    getByType(type, limit = 50) {
-        return this.events.filter(e => e.type === type).slice(0, limit);
+    async getByType(type, limit = 50) {
+        try {
+            const allEvents = await this.getRecent(this.maxEvents);
+            return allEvents.filter(e => e.type === type).slice(0, limit);
+        } catch (err) {
+            logger.error('Failed to filter events', err);
+            return [];
+        }
     }
 
     /**
      * Clear all events
      */
-    clear() {
-        this.events = [];
-        logger.info('[EVENT] Event log cleared');
+    async clear() {
+        try {
+            await this.redis.del(this.eventsKey);
+            logger.info('[EVENT] Event log cleared');
+        } catch (err) {
+            logger.error('Failed to clear events', err);
+        }
     }
 }
 

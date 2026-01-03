@@ -3,6 +3,7 @@ const etcdClient = require('../../scheduler/leader-election/etcd-client');
 const redisQueue = require('../../queue/redis-queue');
 const workersRepo = require('../../db/repositories/workers.repo');
 const db = require('../../db');
+const schedulerState = require('../../common/scheduler-state');
 
 // Import dispatcher to check if scheduler is enabled
 let dispatcher = null;
@@ -67,11 +68,13 @@ const getSystemStatus = async (req, res, next) => {
         const lagResult = await db.query(lagQuery);
         const dispatchLag = Math.round(lagResult.rows[0]?.lag_seconds || 0);
 
+        const isSchedulerEnabled = await schedulerState.isEnabled();
+
         res.json({
             status: 'success',
             data: {
                 scheduler: {
-                    enabled: dispatcher ? dispatcher.isRunning : true, // Use actual dispatcher state
+                    enabled: isSchedulerEnabled,
                     isLeader: false, // API doesn't participate in election
                     leaderId: leaderId || 'none',
                     leaderUptime: 0, // Not applicable for API

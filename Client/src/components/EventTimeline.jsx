@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getEvents } from '../api/api';
 import './EventTimeline.css';
 
-function EventTimeline() {
+function EventTimeline({ scope = 'all', taskId = null }) {
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -10,17 +10,32 @@ function EventTimeline() {
         fetchEvents();
         const interval = setInterval(fetchEvents, 3000); // Refresh every 3 seconds
         return () => clearInterval(interval);
-    }, []);
+    }, [scope, taskId]);
 
     const fetchEvents = async () => {
         try {
-            const res = await getEvents(20); // Get last 20 events
-            // Filter to show only system-level events on Dashboard
-            const systemEvents = res.data.data.events.filter(e =>
-                ['SCHEDULER_ENABLED', 'SCHEDULER_DISABLED', 'LEADER_ELECTED',
-                    'WORKER_FAILED', 'WORKER_RECOVERED'].includes(e.type)
-            );
-            setEvents(systemEvents);
+            let params = { limit: 50 };
+
+            if (scope === 'task' && taskId) {
+                params.taskId = taskId;
+                params.limit = 100; // Get more for specific task to ensure we find them
+            }
+
+            const res = await getEvents(params);
+            const allEvents = res.data.data.events;
+
+            let filteredEvents = allEvents;
+            if (scope === 'dashboard') {
+                // Filter to show only system-level events on Dashboard
+                filteredEvents = allEvents.filter(e =>
+                    ['SCHEDULER_ENABLED', 'SCHEDULER_DISABLED', 'LEADER_ELECTED',
+                        'WORKER_FAILED', 'WORKER_RECOVERED'].includes(e.type)
+                );
+            }
+            // scope === 'admin' shows all events
+            // scope === 'task' is already filtered by API via taskId
+
+            setEvents(filteredEvents);
             setLoading(false);
         } catch (err) {
             console.error('Failed to fetch events', err);
@@ -30,20 +45,19 @@ function EventTimeline() {
 
     const getEventIcon = (type) => {
         switch (type) {
-            case 'SCHEDULER_ENABLED':
-                return '✅';
-            case 'SCHEDULER_DISABLED':
-                return '🛑';
-            case 'LEADER_ELECTED':
-                return '👑';
-            case 'WORKER_FAILED':
-                return '💀';
-            case 'TASK_COMPLETED':
-                return '✔️';
-            case 'TASK_FAILED':
-                return '❌';
-            default:
-                return '📌';
+            case 'SCHEDULER_ENABLED': return '✅';
+            case 'SCHEDULER_DISABLED': return '🛑';
+            case 'LEADER_ELECTED': return '👑';
+            case 'WORKER_FAILED': return '💀';
+
+            case 'TASK_CREATED': return '📝';
+            case 'TASK_DISPATCHED': return '📤';
+            case 'TASK_PICKED': return '👷';
+            case 'TASK_EXECUTING': return '⚙️';
+            case 'TASK_COMPLETED': return '✅';
+            case 'TASK_FAILED': return '❌';
+
+            default: return '📌';
         }
     };
 
@@ -52,12 +66,19 @@ function EventTimeline() {
             case 'SCHEDULER_ENABLED':
             case 'TASK_COMPLETED':
                 return 'event-success';
+
             case 'SCHEDULER_DISABLED':
             case 'WORKER_FAILED':
             case 'TASK_FAILED':
                 return 'event-error';
+
             case 'LEADER_ELECTED':
+            case 'TASK_DISPATCHED':
+            case 'TASK_EXECUTING':
                 return 'event-info';
+
+            case 'TASK_CREATED':
+            case 'TASK_PICKED':
             default:
                 return 'event-default';
         }
@@ -65,16 +86,7 @@ function EventTimeline() {
 
     const formatTime = (timestamp) => {
         const date = new Date(timestamp);
-        const now = new Date();
-        const diffMs = now - date;
-        const diffSecs = Math.floor(diffMs / 1000);
-        const diffMins = Math.floor(diffSecs / 60);
-        const diffHours = Math.floor(diffMins / 60);
-
-        if (diffSecs < 60) return `${diffSecs}s ago`;
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        return date.toLocaleTimeString();
+        return date.toLocaleString();
     };
 
     if (loading) return <div className="event-timeline-loading">Loading events...</div>;

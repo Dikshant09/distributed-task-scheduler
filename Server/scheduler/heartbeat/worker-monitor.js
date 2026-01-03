@@ -3,6 +3,7 @@ const tasksRepo = require('../../db/repositories/tasks.repo'); // We might need 
 const logger = require('../../common/logger');
 const leaderElection = require('../leader-election/leader-election');
 const db = require('../../db');
+const eventLogger = require('../../common/event-logger');
 
 class WorkerMonitor {
     constructor() {
@@ -27,6 +28,11 @@ class WorkerMonitor {
                 logger.warn(`Found ${deadWorkers.length} dead workers`, deadWorkers);
 
                 for (const w of deadWorkers) {
+                    eventLogger.log('WORKER_FAILED', `Worker ${w.worker_id} failed (missed heartbeats)`, {
+                        workerId: w.worker_id,
+                        lastHeartbeat: w.last_heartbeat
+                    });
+
                     // Reclaim tasks
                     const query = `
              UPDATE tasks

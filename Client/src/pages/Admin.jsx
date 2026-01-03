@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getWorkers, enableScheduler, disableScheduler } from '../api/api';
+import EventTimeline from '../components/EventTimeline';
 import './Admin.css';
 
 function Admin() {
@@ -91,6 +92,12 @@ function Admin() {
                         Showing 10 of {workers.length} workers
                     </p>
                 )}
+            </div>
+
+            {/* Event Timeline (All Events) */}
+            <div style={{ marginTop: '30px' }}>
+                <h3>Complete System Timeline</h3>
+                <EventTimeline scope="admin" />
             </div>
         </div>
     );

@@ -32,6 +32,15 @@ psql -U user -d task_scheduler -c "DELETE FROM workers WHERE last_heartbeat < NO
 # Clean up stale process instances
 psql -U user -d task_scheduler -c "DELETE FROM process_instances;" > /dev/null 2>&1 || true
 
+# Clean up event logs from Redis
+echo "🧹 Cleaning up event logs..."
+redis-cli DEL system:events > /dev/null 2>&1 || true
+
+# Ensure scheduler is enabled by default
+echo "🔧 Ensuring scheduler is enabled..."
+rm -f .scheduler-state.json
+echo '{"enabled":true}' > .scheduler-state.json
+
 # Kill any existing processes on ports
 echo "🧹 Cleaning up existing processes..."
 lsof -ti:3000 | xargs kill -9 2>/dev/null || true
