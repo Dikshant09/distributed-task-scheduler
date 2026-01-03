@@ -67,7 +67,27 @@ function SystemTopology() {
     const schedulers = instances.schedulers || [];
     const workers = instances.workers || [];
     const leader = schedulers.find(s => s.isLeader);
-    const standby = schedulers.find(s => !s.isLeader);
+    const standbys = schedulers.filter(s => !s.isLeader);
+
+    // Calculate dynamic layout
+    const numSchedulers = schedulers.length;
+    const numWorkers = workers.length;
+    const maxDisplayWorkers = Math.min(numWorkers, 5); // Display max 5 workers to avoid overcrowding
+
+    // Calculate scheduler positions (200px wide nodes + 50px padding)
+    const schedulerNodeWidth = 200;
+    const schedulerPadding = 50;
+    const schedulerTotalWidth = (numSchedulers * schedulerNodeWidth) + ((numSchedulers - 1) * schedulerPadding);
+    const schedulerStartX = (1000 - schedulerTotalWidth) / 2;
+    const schedulerSpacing = schedulerNodeWidth + schedulerPadding;
+
+    // Calculate worker positions (200px wide nodes + 20px padding)
+    const workerNodeWidth = 200;
+    const workerPadding = 20;
+    const workerTotalWidth = (maxDisplayWorkers * workerNodeWidth) + ((maxDisplayWorkers - 1) * workerPadding);
+    const workerStartX = (1000 - workerTotalWidth) / 2;
+    const workerSpacing = workerNodeWidth + workerPadding;
+
 
     return (
         <div className="system-topology">
@@ -78,31 +98,37 @@ function SystemTopology() {
                 </span>
             </div>
             <svg viewBox="0 0 1000 600" className="topology-diagram">
+                {/* Critical Alert - No Schedulers */}
+                {schedulers.length === 0 && (
+                    <g className="critical-alert">
+                        <rect x="300" y="80" width="400" height="80" rx="8" fill="#ef4444" opacity="0.9" />
+                        <text x="500" y="110" className="node-title" fill="#ffffff" fontSize="18">
+                            ⚠️ CRITICAL: No Schedulers Running
+                        </text>
+                        <text x="500" y="135" className="node-status" fill="#ffffff" fontSize="14">
+                            Task dispatching halted - Start scheduler instances
+                        </text>
+                    </g>
+                )}
+
                 {/* Connection Lines */}
                 <g className="connections">
-                    {/* Scheduler to Redis */}
-                    {leader && (
-                        <path
-                            d="M 250 150 L 250 250 L 500 250 L 500 280"
-                            className="connection-line"
-                            strokeDasharray="5,5"
-                        />
-                    )}
-                    {standby && (
-                        <path
-                            d="M 750 150 L 750 250 L 500 250 L 500 280"
-                            className="connection-line"
-                            strokeDasharray="5,5"
-                        />
-                    )}
+                    {/* Schedulers to Redis */}
+                    {schedulers.map((scheduler, index) => {
+                        const x = schedulerStartX + (index * schedulerSpacing);
+                        return (
+                            <path
+                                key={`conn-sched-${scheduler.id}`}
+                                d={`M ${x + 100} 150 L ${x + 100} 250 L 500 250 L 500 280`}
+                                className="connection-line"
+                                strokeDasharray={scheduler.isLeader ? "none" : "5,5"}
+                            />
+                        );
+                    })}
 
-                    {/* Redis to Workers - Dynamic based on active workers */}
-                    {workers.slice(0, 3).map((worker, index) => {
-                        const workerCount = Math.min(workers.length, 3);
-                        const spacing = workerCount === 1 ? 0 : 600 / (workerCount - 1);
-                        const startX = workerCount === 1 ? 400 : 100;
-                        const centerX = startX + (index * spacing) + 100;
-
+                    {/* Redis to Workers */}
+                    {workers.slice(0, maxDisplayWorkers).map((worker, index) => {
+                        const centerX = workerStartX + (index * workerSpacing) + 100;
                         return (
                             <path
                                 key={`connection-${worker.id}`}
@@ -115,23 +141,25 @@ function SystemTopology() {
 
                 {/* Scheduler Nodes */}
                 <g className="schedulers">
-                    {leader && (
-                        <g className="scheduler-node leader" transform="translate(150, 80)">
-                            <rect width="200" height="80" rx="8" className="node-bg leader-bg" />
-                            <text x="100" y="25" className="node-title">👑 Leader Scheduler</text>
-                            <text x="100" y="45" className="node-id">{leader.id.substring(0, 16)}</text>
-                            <text x="100" y="60" className="node-status">PID: {leader.pid}</text>
-                        </g>
-                    )}
+                    {schedulers.map((scheduler, index) => {
+                        const x = schedulerStartX + (index * schedulerSpacing);
+                        const isLeader = scheduler.isLeader;
 
-                    {standby && (
-                        <g className="scheduler-node standby" transform="translate(650, 80)">
-                            <rect width="200" height="80" rx="8" className="node-bg standby-bg" />
-                            <text x="100" y="25" className="node-title">⏸️ Standby Scheduler</text>
-                            <text x="100" y="45" className="node-id">{standby.id.substring(0, 16)}</text>
-                            <text x="100" y="60" className="node-status">PID: {standby.pid}</text>
-                        </g>
-                    )}
+                        return (
+                            <g
+                                key={scheduler.id}
+                                className={`scheduler-node ${isLeader ? 'leader' : 'standby'}`}
+                                transform={`translate(${x}, 80)`}
+                            >
+                                <rect width="200" height="80" rx="8" className={`node-bg ${isLeader ? 'leader-bg' : 'standby-bg'}`} />
+                                <text x="100" y="25" className="node-title">
+                                    {isLeader ? '👑 Leader' : '⏸️ Standby'} Scheduler
+                                </text>
+                                <text x="100" y="45" className="node-id">{scheduler.id.substring(0, 16)}</text>
+                                <text x="100" y="60" className="node-status">PID: {scheduler.pid}</text>
+                            </g>
+                        );
+                    })}
                 </g>
 
                 {/* Redis Node */}
@@ -149,13 +177,8 @@ function SystemTopology() {
 
                 {/* Worker Nodes - Dynamic positioning */}
                 <g className="workers">
-                    {workers.slice(0, 3).map((worker, index) => {
-                        // Dynamic positioning based on number of workers
-                        const workerCount = Math.min(workers.length, 3);
-                        const spacing = workerCount === 1 ? 0 : 600 / (workerCount - 1);
-                        const startX = workerCount === 1 ? 400 : 100;
-                        const x = startX + (index * spacing);
-
+                    {workers.slice(0, maxDisplayWorkers).map((worker, index) => {
+                        const x = workerStartX + (index * workerSpacing);
                         const isExecuting = worker.status === 'executing';
 
                         return (
@@ -177,38 +200,72 @@ function SystemTopology() {
                             </g>
                         );
                     })}
+
+                    {/* Show indicator if there are more workers */}
+                    {numWorkers > maxDisplayWorkers && (
+                        <g transform={`translate(${workerStartX + maxDisplayWorkers * workerSpacing}, 450)`}>
+                            <rect width="200" height="100" rx="8" className="node-bg idle-bg" opacity="0.5" />
+                            <text x="100" y="50" className="node-title">
+                                +{numWorkers - maxDisplayWorkers} more workers
+                            </text>
+                        </g>
+                    )}
+
+                    {/* Critical Alert - No Workers */}
+                    {workers.length === 0 && (
+                        <g className="critical-alert">
+                            <rect x="300" y="450" width="400" height="80" rx="8" fill="#f59e0b" opacity="0.9" />
+                            <text x="500" y="480" className="node-title" fill="#ffffff" fontSize="18">
+                                ⚠️ WARNING: No Workers Running
+                            </text>
+                            <text x="500" y="505" className="node-status" fill="#ffffff" fontSize="14">
+                                No task execution - Start worker instances
+                            </text>
+                        </g>
+                    )}
                 </g>
 
-                {/* Animated Task Flow (when queue > 0) */}
-                {queueDepth > 0 && leader && workers.length > 0 && (
+                {/* Animated Task Flow - Real-time based on executing workers */}
+                {leader && workers.length > 0 && (
                     <>
-                        {/* Leader to Redis */}
-                        <circle r="6" className="task-flow" fill="#4ecdc4">
-                            <animateMotion
-                                dur="2s"
-                                repeatCount="indefinite"
-                                path="M 250 150 L 250 250 L 500 250 L 500 280"
-                            />
-                        </circle>
-
-                        {/* Redis to First Worker */}
-                        {(() => {
-                            const workerCount = Math.min(workers.length, 3);
-                            const spacing = workerCount === 1 ? 0 : 600 / (workerCount - 1);
-                            const startX = workerCount === 1 ? 400 : 100;
-                            const centerX = startX + 100;
-
+                        {/* Leader to Redis - show when queue has tasks */}
+                        {queueDepth > 0 && (() => {
+                            const leaderIndex = schedulers.findIndex(s => s.isLeader);
+                            const leaderX = schedulerStartX + (leaderIndex * schedulerSpacing) + 100;
                             return (
-                                <circle r="6" className="task-flow" fill="#ff6b6b">
+                                <circle r="6" className="task-flow" fill="#4ecdc4">
                                     <animateMotion
                                         dur="2s"
                                         repeatCount="indefinite"
-                                        path={`M 500 380 L ${centerX} 450`}
-                                        begin="0.5s"
+                                        path={`M ${leaderX} 150 L ${leaderX} 250 L 500 250 L 500 280`}
                                     />
                                 </circle>
                             );
                         })()}
+
+                        {/* Redis to Executing Workers - Real-time animation */}
+                        {workers.slice(0, maxDisplayWorkers).map((worker, index) => {
+                            // Only show animation for workers that are currently executing
+                            if (worker.status !== 'executing') return null;
+
+                            const centerX = workerStartX + (index * workerSpacing) + 100;
+
+                            return (
+                                <circle
+                                    key={`task-flow-${worker.id}`}
+                                    r="6"
+                                    className="task-flow"
+                                    fill="#ff6b6b"
+                                >
+                                    <animateMotion
+                                        dur="1.5s"
+                                        repeatCount="indefinite"
+                                        path={`M 500 380 L ${centerX} 450`}
+                                        begin={`${index * 0.2}s`}
+                                    />
+                                </circle>
+                            );
+                        })}
                     </>
                 )}
             </svg>

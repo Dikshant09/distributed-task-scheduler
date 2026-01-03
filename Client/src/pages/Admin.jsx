@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { getWorkers, enableScheduler, disableScheduler } from '../api/api';
 import EventTimeline from '../components/EventTimeline';
+import Toast from '../components/Toast';
 import './Admin.css';
 
 function Admin() {
     const [workers, setWorkers] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [toast, setToast] = useState(null);
 
     useEffect(() => {
         // Connect to WebSocket server
@@ -49,21 +51,25 @@ function Admin() {
         }
     };
 
+    const showToast = (message, type = 'info') => {
+        setToast({ message, type });
+    };
+
     const handleEnableScheduler = async () => {
         try {
             await enableScheduler();
-            alert('Scheduler enabled');
+            showToast('Scheduler enabled successfully', 'success');
         } catch (err) {
-            alert(`Failed to enable scheduler: ${err.message}`);
+            showToast(`Failed to enable scheduler: ${err.message}`, 'error');
         }
     };
 
     const handleDisableScheduler = async () => {
         try {
             await disableScheduler();
-            alert('Scheduler disabled');
+            showToast('Scheduler disabled successfully', 'warning');
         } catch (err) {
-            alert(`Failed to disable scheduler: ${err.message}`);
+            showToast(`Failed to disable scheduler: ${err.message}`, 'error');
         }
     };
 
@@ -130,6 +136,15 @@ function Admin() {
                 <h3>Complete System Timeline</h3>
                 <EventTimeline scope="admin" />
             </div>
+
+            {/* Toast Notifications */}
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                />
+            )}
         </div>
     );
 }

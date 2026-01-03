@@ -7,6 +7,21 @@ set -e
 
 echo "🚀 Starting Distributed Task Scheduler (Production Mode)..."
 
+# Load environment variables from .env if it exists
+if [ -f .env ]; then
+    export $(cat .env | grep -v '^#' | xargs)
+fi
+
+# Set defaults if not provided
+NUM_SCHEDULERS=${NUM_SCHEDULERS:-3}
+NUM_WORKERS=${NUM_WORKERS:-5}
+
+echo "📊 Configuration:"
+echo "  - Schedulers: $NUM_SCHEDULERS"
+echo "  - Workers:    $NUM_WORKERS"
+echo "  - Mode:       PRODUCTION (no auto-restart)"
+echo ""
+
 # Check if infrastructure services are running
 echo "🔍 Checking infrastructure services..."
 if ! redis-cli ping > /dev/null 2>&1; then
@@ -40,7 +55,7 @@ redis-cli DEL scheduler:failed_workers > /dev/null 2>&1 || true
 
 # Ensure scheduler is enabled by default
 echo "🔧 Ensuring scheduler is enabled..."
-cat > .scheduler-state.json << EOF
+cat > .scheduler-state.json <<EOF
 {
   "enabled": true,
   "lastModified": "$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")"
@@ -67,29 +82,26 @@ echo "  ✅ API started (PID: $API_PID)"
 
 sleep 2
 
-# Start 2 scheduler instances
-node scheduler/index.js > ../logs/scheduler1.log 2>&1 &
-SCHEDULER1_PID=$!
-echo "  ✅ Scheduler 1 started (PID: $SCHEDULER1_PID)"
+# Start scheduler instances dynamically
+echo "🗓️  Starting $NUM_SCHEDULERS scheduler instance(s)..."
+SCHEDULER_PIDS=()
+for i in $(seq 1 $NUM_SCHEDULERS); do
+    node scheduler/index.js > ../logs/scheduler$i.log 2>&1 &
+    PID=$!
+    SCHEDULER_PIDS+=($PID)
+    echo "  ✅ Scheduler $i started (PID: $PID)"
+    [ $i -lt $NUM_SCHEDULERS ] && sleep 2
+done
 
-sleep 2
-
-node scheduler/index.js > ../logs/scheduler2.log 2>&1 &
-SCHEDULER2_PID=$!
-echo "  ✅ Scheduler 2 started (PID: $SCHEDULER2_PID)"
-
-# Start 3 worker instances (NO NODEMON - WORKERS STAY DEAD WHEN KILLED)
-node worker/index.js > ../logs/worker1.log 2>&1 &
-WORKER1_PID=$!
-echo "  ✅ Worker 1 started (PID: $WORKER1_PID)"
-
-node worker/index.js > ../logs/worker2.log 2>&1 &
-WORKER2_PID=$!
-echo "  ✅ Worker 2 started (PID: $WORKER2_PID)"
-
-node worker/index.js > ../logs/worker3.log 2>&1 &
-WORKER3_PID=$!
-echo "  ✅ Worker 3 started (PID: $WORKER3_PID)"
+# Start worker instances dynamically (NO NODEMON - WORKERS STAY DEAD WHEN KILLED)
+echo "👷 Starting $NUM_WORKERS worker instance(s)..."
+WORKER_PIDS=()
+for i in $(seq 1 $NUM_WORKERS); do
+    node worker/index.js > ../logs/worker$i.log 2>&1 &
+    PID=$!
+    WORKER_PIDS+=($PID)
+    echo "  ✅ Worker $i started (PID: $PID)"
+done
 
 cd ..
 
@@ -118,17 +130,18 @@ echo "  - Client:    http://localhost:5173"
 echo "  - API:       http://localhost:3000"
 echo ""
 echo "📊 System Configuration:"
-echo "  - Schedulers: 2 (1 leader, 1 standby)"
-echo "  - Workers:    3"
+echo "  - Schedulers: $NUM_SCHEDULERS (1 leader, $((NUM_SCHEDULERS-1)) standby)"
+echo "  - Workers:    $NUM_WORKERS"
 echo "  - Mode:       PRODUCTION (no auto-restart)"
 echo ""
 echo "📝 Logs available at:"
 echo "  - API:         logs/api.log"
-echo "  - Scheduler 1: logs/scheduler1.log"
-echo "  - Scheduler 2: logs/scheduler2.log"
-echo "  - Worker 1:    logs/worker1.log"
-echo "  - Worker 2:    logs/worker2.log"
-echo "  - Worker 3:    logs/worker3.log"
+for i in $(seq 1 $NUM_SCHEDULERS); do
+    echo "  - Scheduler $i: logs/scheduler$i.log"
+done
+for i in $(seq 1 $NUM_WORKERS); do
+    echo "  - Worker $i:    logs/worker$i.log"
+done
 echo "  - Client:      logs/client.log"
 echo ""
 echo "💡 Check leader status:"

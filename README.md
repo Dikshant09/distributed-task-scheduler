@@ -31,6 +31,37 @@ A fault-tolerant distributed task scheduler built with Node.js, React, PostgreSQ
 
 Access the UI at `http://localhost:5173`
 
+## Configuration
+
+You can configure the number of scheduler and worker instances using environment variables:
+
+1. **Copy the example environment file:**
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Edit `.env` to set instance counts:**
+   ```bash
+   # Instance Configuration
+   NUM_SCHEDULERS=3  # Number of scheduler instances (default: 3)
+   NUM_WORKERS=5     # Number of worker instances (default: 5)
+   ```
+
+3. **Run the system:**
+   ```bash
+   ./run.sh          # Development mode (with auto-restart)
+   # or
+   ./run_prod.sh     # Production mode (no auto-restart)
+   ```
+
+**Recommendations:**
+- **Development**: 2-3 schedulers, 3-5 workers
+- **Production**: 3-5 schedulers, 10+ workers (based on load)
+- **Minimal**: 2 schedulers, 2 workers (for testing)
+
+The scripts will automatically start the configured number of instances and create separate log files for each.
+
+
 ### Leader Election Failover Demo
 
 To demonstrate leader election and automatic failover:
