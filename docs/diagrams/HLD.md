@@ -341,11 +341,126 @@ Consumer groups enable horizontal scaling while maintaining delivery guarantees.
 
 ---
 
-## 11. Future Enhancements
+## 11. Cloud Deployment Architecture
 
-- **Cron-style scheduling:** Recurring jobs
-- **Job dependencies:** DAG execution
-- **Priority queues:** High/low priority jobs
-- **Rate limiting:** Per-user/per-job-type limits
-- **Observability:** Prometheus metrics, distributed tracing
-- **Multi-tenancy:** Namespace isolation
+### 11.1 AWS Deployment
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          AWS CloudFront (CDN)                            │
+└─────────────────────────────────┬───────────────────────────────────────┘
+                                  │
+┌─────────────────────────────────┴───────────────────────────────────────┐
+│                          S3 Bucket (React App)                           │
+└─────────────────────────────────────────────────────────────────────────┘
+                                  │
+┌─────────────────────────────────┴───────────────────────────────────────┐
+│                    Application Load Balancer (ALB)                       │
+└─────────────────────────────────┬───────────────────────────────────────┘
+                                  │
+┌─────────────────────────────────┴───────────────────────────────────────┐
+│                          ECS Fargate Cluster                             │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │
+│  │  API (1x)   │  │Scheduler    │  │Scheduler    │  │ Workers     │     │
+│  │             │  │  (Leader)   │  │  (Standby)  │  │  (1-5x)     │     │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘     │
+└─────────────────────────────────────────────────────────────────────────┘
+        │                  │                                │
+        ▼                  ▼                                ▼
+┌─────────────┐    ┌─────────────┐                 ┌─────────────┐
+│ RDS         │    │ Etcd (3x)   │                 │ ElastiCache │
+│ PostgreSQL  │    │ EC2/ECS     │                 │ Redis       │
+└─────────────┘    └─────────────┘                 └─────────────┘
+```
+
+### 11.2 Azure Deployment
+
+| Component | Azure Service |
+|-----------|---------------|
+| Frontend | Azure Static Web Apps + CDN |
+| API + Services | Azure Container Apps |
+| Database | Azure Database for PostgreSQL |
+| Queue | Azure Cache for Redis |
+| Coordination | Self-hosted Etcd on Azure Container Instances |
+| Load Balancer | Azure Application Gateway |
+
+### 11.3 Cost Estimates (Demo Workload)
+
+| Component | AWS | Azure |
+|-----------|-----|-------|
+| Frontend (CDN + Storage) | ~$5/mo | ~$5/mo |
+| Compute (API + Schedulers + Workers) | ~$50-100/mo | ~$50-100/mo |
+| Database (small) | ~$30/mo | ~$40/mo |
+| Redis (small) | ~$20/mo | ~$25/mo |
+| Etcd (3 nodes) | ~$30/mo | ~$35/mo |
+| **Total** | **~$135-185/mo** | **~$155-205/mo** |
+
+---
+
+## 12. Real-Time Visualization
+
+### 12.1 System Topology
+
+The UI includes an interactive topology diagram showing:
+- **Schedulers**: Leader and standby instances
+- **Redis Queue**: Real-time queue depth
+- **Workers**: Active workers with task status
+- **Task Flow**: Animated connections showing task dispatch
+
+### 12.2 Modern UI Features
+
+- **Glassmorphism Design**: Frosted glass effects with backdrop blur
+- **Dark Theme**: Professional dark mode with vibrant accents
+- **Toast Notifications**: Non-intrusive feedback for user actions
+- **Event Timeline**: Color-coded real-time event log
+- **WebSocket Updates**: Live data without page refresh
+
+---
+
+## 13. Future Enhancements
+
+### Already Implemented ✅
+- [x] Real-time WebSocket updates
+- [x] Interactive system topology
+- [x] Chaos engineering controls
+- [x] Event logging and timeline
+- [x] Toast notifications
+- [x] Environment-based configuration
+
+### Roadmap
+- **Cron-style scheduling:** Recurring jobs with cron expressions
+- **Job dependencies:** DAG-based execution
+- **Priority queues:** High/low priority job lanes
+- **Rate limiting:** Per-user/per-job-type throttling
+- **Kubernetes deployment:** Helm charts and operators
+- **Observability:** Prometheus metrics, Grafana dashboards, distributed tracing
+- **Multi-tenancy:** Namespace isolation for multiple users/teams
+
+---
+
+## 14. Interview Talking Points
+
+### Design Highlights
+
+> **"The database is the single source of truth; queues are only delivery mechanisms."**
+
+This prevents dual-write bugs and ensures jobs survive queue outages.
+
+> **"The watcher bridges wall-clock time and asynchronous execution."**
+
+Separating scheduling from execution allows independent scaling and failure recovery.
+
+> **"We use lease-based execution to achieve exactly-once semantics."**
+
+Database-level atomic lease acquisition prevents duplicate task processing.
+
+### Production Readiness
+
+- ✅ Leader election prevents split-brain
+- ✅ Lease-based execution prevents duplicate work
+- ✅ Exponential backoff prevents thundering herd
+- ✅ DLQ isolates bad jobs
+- ✅ Idempotency keys prevent duplicate creation
+- ✅ Batch dispatch reduces DB load
+- ✅ Real-time monitoring for observability
+- ✅ Chaos engineering for resilience testing
