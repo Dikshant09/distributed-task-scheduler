@@ -27,8 +27,8 @@ function JobDetail() {
         }
     };
 
-    if (loading) return <div className="loading">Loading task details...</div>;
-    if (!task) return <div className="error">Task not found</div>;
+    if (loading) return <div className="loading">Loading job details...</div>;
+    if (!task) return <div className="error">Job not found</div>;
 
     const getStatusColor = (status) => {
         switch (status) {
@@ -44,7 +44,7 @@ function JobDetail() {
         <div className="job-detail">
             <div className="job-header">
                 <h2>
-                    Task Details
+                    Job Details
                     <span className="job-id">{task.id.substring(0, 12)}...</span>
                 </h2>
                 <span className={`status-badge ${getStatusColor(task.status)}`}>
@@ -53,10 +53,10 @@ function JobDetail() {
             </div>
 
             <div className="job-info">
-                <h3>Task Information</h3>
+                <h3>Job Information</h3>
                 <div className="info-grid">
                     <div className="info-item">
-                        <div className="info-label">Task ID</div>
+                        <div className="info-label">Job ID</div>
                         <div className="info-value"><code>{task.id}</code></div>
                     </div>
                     <div className="info-item">
@@ -89,7 +89,7 @@ function JobDetail() {
                 <pre>{JSON.stringify(task.payload, null, 2)}</pre>
             </div>
 
-            {/* Event Timeline (Task Specific) */}
+            {/* Event Timeline (Job Specific) */}
             <div className="execution-history">
                 <EventTimeline scope="task" taskId={id} />
             </div>

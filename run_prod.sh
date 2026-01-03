@@ -9,7 +9,10 @@ echo "🚀 Starting Distributed Task Scheduler (Production Mode)..."
 
 # Load environment variables from .env if it exists
 if [ -f .env ]; then
-    export $(cat .env | grep -v '^#' | xargs)
+    # Export variables, filtering out comments and empty lines
+    set -a
+    source <(grep -v '^#' .env | grep -v '^$' | sed 's/#.*//')
+    set +a
 fi
 
 # Set defaults if not provided
