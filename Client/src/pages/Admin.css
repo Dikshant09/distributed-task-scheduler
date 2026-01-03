@@ -1,47 +1,167 @@
-.admin-page {
-    max-width: 1000px;
+.admin {
+    max-width: 1600px;
 }
 
 .admin-section {
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    margin-bottom: 20px;
+    margin-bottom: var(--spacing-2xl);
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-xl);
+    box-shadow: var(--glass-shadow);
 }
 
 .admin-section h3 {
     margin-top: 0;
+    margin-bottom: var(--spacing-lg);
+    color: var(--text-primary);
 }
 
-.control-buttons {
+.admin-actions {
     display: flex;
-    gap: 15px;
+    gap: var(--spacing-lg);
+    flex-wrap: wrap;
+}
+
+.admin-actions .btn {
+    padding: var(--spacing-md) var(--spacing-xl);
+    font-size: 0.875rem;
+    font-weight: 700;
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-base);
+    border: none;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.admin-actions .btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.admin-actions .btn:hover::before {
+    width: 300px;
+    height: 300px;
+}
+
+.admin-actions .btn-success {
+    background: var(--gradient-success);
+    color: white;
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+}
+
+.admin-actions .btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(34, 197, 94, 0.5);
+}
+
+.admin-actions .btn-warning {
+    background: var(--gradient-warning);
+    color: white;
+    box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4);
+}
+
+.admin-actions .btn-warning:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(251, 191, 36, 0.5);
 }
 
 .workers-table {
-    margin-top: 15px;
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
 }
 
-/* Worker status styling */
-.worker-dead {
-    background-color: #ffebee;
+.workers-table th {
+    background: rgba(255, 255, 255, 0.05);
+    padding: var(--spacing-md) var(--spacing-lg);
+    text-align: left;
+    font-weight: 700;
+    color: var(--text-primary);
+    border-bottom: 2px solid var(--glass-border);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.workers-table td {
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.workers-table tr:last-child td {
+    border-bottom: none;
+}
+
+.workers-table tr {
+    transition: all var(--transition-fast);
+}
+
+.workers-table tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.workers-table tr.worker-dead {
+    opacity: 0.5;
+}
+
+.workers-table tr.worker-dead:hover {
     opacity: 0.7;
 }
 
-.status-badge {
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-size: 13px;
-    font-weight: 600;
+.status-active {
+    background: var(--gradient-success);
+    color: white;
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--radius-md);
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: inline-block;
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
 }
 
-.status-badge.status-alive {
-    background-color: #4CAF50;
+.status-dead {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
     color: white;
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--radius-md);
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: inline-block;
+    box-shadow: 0 2px 8px rgba(107, 114, 128, 0.3);
 }
 
-.status-badge.status-dead {
-    background-color: #f44336;
-    color: white;
+/* Responsive Design */
+@media (max-width: 768px) {
+    .admin-section {
+        padding: var(--spacing-md);
+    }
+
+    .admin-actions {
+        gap: var(--spacing-sm);
+    }
+
+    .admin-actions .btn {
+        flex: 1;
+        min-width: 140px;
+    }
+
+    .workers-table th,
+    .workers-table td {
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: 0.75rem;
+    }
 }

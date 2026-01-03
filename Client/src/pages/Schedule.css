@@ -1,62 +1,171 @@
 .schedule-page {
-    max-width: 1200px;
+    max-width: 1600px;
 }
 
 .schedule-content {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
+    grid-template-columns: 1fr 1.5fr;
+    gap: var(--spacing-2xl);
+    margin-top: var(--spacing-xl);
 }
 
-.create-form,
-.scheduled-jobs {
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.create-form {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-xl);
+    box-shadow: var(--glass-shadow);
+    height: fit-content;
 }
 
-.create-form h3,
-.scheduled-jobs h3 {
+.create-form h3 {
     margin-top: 0;
+    margin-bottom: var(--spacing-lg);
+    color: var(--text-primary);
 }
 
 .form-group {
-    margin-bottom: 20px;
+    margin-bottom: var(--spacing-lg);
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: var(--spacing-sm);
     font-weight: 600;
-    color: #555;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    letter-spacing: 0.02em;
 }
 
-.form-group input,
 .form-group select,
+.form-group input,
 .form-group textarea {
     width: 100%;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
-    font-family: inherit;
+    padding: var(--spacing-md);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-family: 'Inter', sans-serif;
+    transition: all var(--transition-base);
 }
 
 .form-group textarea {
-    font-family: 'Courier New', monospace;
+    font-family: 'SF Mono', Monaco, 'Courier New', monospace;
     resize: vertical;
+    min-height: 200px;
 }
 
-.form-group input:focus,
+.form-group select:hover,
+.form-group input:hover,
+.form-group textarea:hover {
+    border-color: var(--accent-primary);
+    background: rgba(255, 255, 255, 0.08);
+}
+
 .form-group select:focus,
+.form-group input:focus,
 .form-group textarea:focus {
     outline: none;
-    border-color: #2196F3;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    background: rgba(255, 255, 255, 0.08);
 }
 
-.btn-primary {
+.form-group select option {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.form-group input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+}
+
+.create-form button[type="submit"] {
     width: 100%;
-    padding: 12px;
-    font-size: 16px;
+    margin-top: var(--spacing-md);
+}
+
+.scheduled-jobs {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-xl);
+    box-shadow: var(--glass-shadow);
+}
+
+.scheduled-jobs h3 {
+    margin-top: 0;
+    margin-bottom: var(--spacing-lg);
+    color: var(--text-primary);
+}
+
+.jobs-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.jobs-table th {
+    background: rgba(255, 255, 255, 0.05);
+    padding: var(--spacing-md) var(--spacing-lg);
+    text-align: left;
+    font-weight: 700;
+    color: var(--text-primary);
+    border-bottom: 2px solid var(--glass-border);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.jobs-table td {
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.jobs-table tr:last-child td {
+    border-bottom: none;
+}
+
+.jobs-table tr {
+    transition: all var(--transition-fast);
+}
+
+.jobs-table tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .schedule-content {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+
+    .create-form,
+    .scheduled-jobs {
+        padding: var(--spacing-md);
+    }
+
+    .form-group select,
+    .form-group input,
+    .form-group textarea {
+        padding: var(--spacing-sm);
+    }
+
+    .jobs-table th,
+    .jobs-table td {
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: 0.75rem;
+    }
 }

@@ -36,47 +36,51 @@ function JobDetail() {
             case 'FAILED': return 'status-failed';
             case 'RUNNING': return 'status-running';
             case 'PENDING': return 'status-pending';
-            default: return 'status-default';
+            default: return 'status-pending';
         }
     };
 
     return (
-        <div className="task-detail-page">
-            <button className="back-btn" onClick={() => navigate('/')}>
-                ← Back to Dashboard
-            </button>
-
-            <div className="task-header">
-                <h2>Task Details</h2>
+        <div className="job-detail">
+            <div className="job-header">
+                <h2>
+                    Task Details
+                    <span className="job-id">{task.id.substring(0, 12)}...</span>
+                </h2>
                 <span className={`status-badge ${getStatusColor(task.status)}`}>
                     {task.status}
                 </span>
             </div>
 
-            <div className="task-info-grid">
-                <div className="info-card">
-                    <label>Task ID</label>
-                    <div className="value monospace">{task.id}</div>
-                </div>
-                <div className="info-card">
-                    <label>Type</label>
-                    <div className="value">{task.type}</div>
-                </div>
-                <div className="info-card">
-                    <label>Created At</label>
-                    <div className="value">{new Date(task.created_at).toLocaleString()}</div>
-                </div>
-                <div className="info-card">
-                    <label>Scheduled At</label>
-                    <div className="value">{new Date(task.scheduled_at).toLocaleString()}</div>
-                </div>
-                <div className="info-card">
-                    <label>Attempts</label>
-                    <div className="value">{task.attempt} / {task.max_attempts}</div>
-                </div>
-                <div className="info-card">
-                    <label>Worker ID</label>
-                    <div className="value monospace">{task.assigned_worker_id || '-'}</div>
+            <div className="job-info">
+                <h3>Task Information</h3>
+                <div className="info-grid">
+                    <div className="info-item">
+                        <div className="info-label">Task ID</div>
+                        <div className="info-value"><code>{task.id}</code></div>
+                    </div>
+                    <div className="info-item">
+                        <div className="info-label">Type</div>
+                        <div className="info-value">{task.type}</div>
+                    </div>
+                    <div className="info-item">
+                        <div className="info-label">Created At</div>
+                        <div className="info-value">{new Date(task.created_at).toLocaleString()}</div>
+                    </div>
+                    <div className="info-item">
+                        <div className="info-label">Scheduled At</div>
+                        <div className="info-value">{new Date(task.scheduled_at).toLocaleString()}</div>
+                    </div>
+                    <div className="info-item">
+                        <div className="info-label">Attempts</div>
+                        <div className="info-value">{task.attempt} / {task.max_attempts}</div>
+                    </div>
+                    <div className="info-item">
+                        <div className="info-label">Worker ID</div>
+                        <div className="info-value">
+                            {task.assigned_worker_id ? <code>{task.assigned_worker_id.substring(0, 12)}...</code> : '-'}
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -86,8 +90,7 @@ function JobDetail() {
             </div>
 
             {/* Event Timeline (Task Specific) */}
-            <div className="task-timeline-section">
-                <h3>Task Timeline</h3>
+            <div className="execution-history">
                 <EventTimeline scope="task" taskId={id} />
             </div>
         </div>

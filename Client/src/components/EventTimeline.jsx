@@ -43,53 +43,34 @@ function EventTimeline({ scope = 'all', taskId = null }) {
         }
     };
 
-    const getEventIcon = (type) => {
-        switch (type) {
-            case 'SCHEDULER_ENABLED': return '✅';
-            case 'SCHEDULER_DISABLED': return '🛑';
-            case 'LEADER_ELECTED': return '👑';
-            case 'WORKER_FAILED': return '💀';
-
-            case 'TASK_CREATED': return '📝';
-            case 'TASK_DISPATCHED': return '📤';
-            case 'TASK_PICKED': return '👷';
-            case 'TASK_EXECUTING': return '⚙️';
-            case 'TASK_COMPLETED': return '✅';
-            case 'TASK_FAILED': return '❌';
-
-            default: return '📌';
-        }
-    };
-
-    const getEventColor = (type) => {
-        switch (type) {
-            case 'SCHEDULER_ENABLED':
-            case 'TASK_COMPLETED':
-                return 'event-success';
-
-            case 'SCHEDULER_DISABLED':
-            case 'WORKER_FAILED':
-            case 'TASK_FAILED':
-                return 'event-error';
-
-            case 'LEADER_ELECTED':
-            case 'TASK_DISPATCHED':
-            case 'TASK_EXECUTING':
-                return 'event-info';
-
-            case 'TASK_CREATED':
-            case 'TASK_PICKED':
-            default:
-                return 'event-default';
-        }
+    const getEventType = (type) => {
+        // Categorize events for styling
+        if (['LEADER_ELECTED', 'SCHEDULER_ENABLED'].includes(type)) return 'event-leader';
+        if (['WORKER_FAILED', 'WORKER_RECOVERED'].includes(type)) return 'event-worker';
+        if (['TASK_CREATED', 'TASK_DISPATCHED', 'TASK_PICKED', 'TASK_EXECUTING', 'TASK_COMPLETED'].includes(type)) return 'event-task';
+        if (['TASK_FAILED', 'SCHEDULER_DISABLED'].includes(type)) return 'event-error';
+        return '';
     };
 
     const formatTime = (timestamp) => {
         const date = new Date(timestamp);
+        const now = new Date();
+        const diff = now - date;
+
+        // If less than 1 minute ago, show "just now"
+        if (diff < 60000) return 'Just now';
+
+        // If less than 1 hour ago, show minutes
+        if (diff < 3600000) {
+            const mins = Math.floor(diff / 60000);
+            return `${mins} min${mins > 1 ? 's' : ''} ago`;
+        }
+
+        // Otherwise show full time
         return date.toLocaleString();
     };
 
-    if (loading) return <div className="event-timeline-loading">Loading events...</div>;
+    if (loading) return <div className="loading">Loading events...</div>;
 
     return (
         <div className="event-timeline">
@@ -97,14 +78,21 @@ function EventTimeline({ scope = 'all', taskId = null }) {
             {events.length === 0 ? (
                 <p className="no-events">No events yet</p>
             ) : (
-                <div className="events-list">
+                <div className="timeline-container">
                     {events.map(event => (
-                        <div key={event.id} className={`event-item ${getEventColor(event.type)}`}>
-                            <span className="event-icon">{getEventIcon(event.type)}</span>
-                            <div className="event-content">
-                                <div className="event-message">{event.message}</div>
-                                <div className="event-time">{formatTime(event.timestamp)}</div>
+                        <div key={event.id} className={`event-item ${getEventType(event.type)}`}>
+                            <div className="event-header">
+                                <span className="event-type">{event.type.replace(/_/g, ' ')}</span>
+                                <span className="event-timestamp">{formatTime(event.timestamp)}</span>
                             </div>
+                            <div className="event-message">{event.message}</div>
+                            {event.metadata && Object.keys(event.metadata).length > 0 && (
+                                <div className="event-details">
+                                    {event.metadata.taskId && <div>Task: <code>{event.metadata.taskId.substring(0, 8)}...</code></div>}
+                                    {event.metadata.workerId && <div>Worker: <code>{event.metadata.workerId.substring(0, 8)}...</code></div>}
+                                    {event.metadata.schedulerId && <div>Scheduler: <code>{event.metadata.schedulerId.substring(0, 8)}...</code></div>}
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>
