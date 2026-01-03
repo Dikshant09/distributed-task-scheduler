@@ -212,3 +212,50 @@
 .instance-details div {
     margin: 5px 0;
 }
+
+.instance-card.worker.executing {
+    border-color: #FF9800;
+    background: linear-gradient(135deg, #ffffff 0%, #fff3e0 100%);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.4);
+    }
+
+    50% {
+        box-shadow: 0 0 0 8px rgba(255, 152, 0, 0);
+    }
+}
+
+.worker-badge.executing {
+    background: #FF9800;
+    animation: blink 1.5s ease-in-out infinite;
+}
+
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+}
+
+.current-task {
+    font-weight: 600;
+    color: #FF9800;
+}
+
+.current-task code {
+    background: #fff3e0;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+}

@@ -103,6 +103,14 @@ const executeDelayTask = async (payload) => {
 const executeTask = async (task) => {
     logger.info(`Executing task ${task.id} (Type: ${task.type})`);
 
+    // Add minimum delay for demo visibility (makes worker status change observable)
+    // In production, remove this or set MIN_EXECUTION_DELAY_MS=0
+    const MIN_EXECUTION_DELAY = parseInt(process.env.MIN_EXECUTION_DELAY_MS || '3000');
+    if (MIN_EXECUTION_DELAY > 0) {
+        logger.info(`Waiting ${MIN_EXECUTION_DELAY}ms for demo visibility...`);
+        await new Promise(resolve => setTimeout(resolve, MIN_EXECUTION_DELAY));
+    }
+
     try {
         let result;
 

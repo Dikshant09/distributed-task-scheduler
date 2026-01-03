@@ -4,6 +4,7 @@ const logger = require('../../common/logger');
 const metrics = require('../../common/metrics');
 const config = require('../../common/config');
 const leaderElection = require('../leader-election/leader-election');
+const schedulerState = require('../../common/scheduler-state');
 
 class Dispatcher {
     constructor() {
@@ -27,6 +28,13 @@ class Dispatcher {
     }
 
     async _dispatchLoop() {
+        // Check if scheduler is enabled
+        const isEnabled = await schedulerState.isEnabled();
+        if (!isEnabled) {
+            logger.debug('Scheduler is disabled, skipping dispatch');
+            return;
+        }
+
         if (!leaderElection.isLeader) return;
 
         try {
@@ -101,6 +109,10 @@ class Dispatcher {
         } catch (err) {
             logger.error('Retry loop error', err);
         }
+    }
+
+    isRunning() {
+        return this.isRunning;
     }
 }
 

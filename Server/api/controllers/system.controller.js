@@ -4,6 +4,15 @@ const redisQueue = require('../../queue/redis-queue');
 const workersRepo = require('../../db/repositories/workers.repo');
 const db = require('../../db');
 
+// Import dispatcher to check if scheduler is enabled
+let dispatcher = null;
+try {
+    dispatcher = require('../../scheduler/task-dispatcher/dispatcher');
+} catch (err) {
+    // API server might not have access to dispatcher (runs separately)
+    logger.debug('Dispatcher not available in API process');
+}
+
 /**
  * GET /system/status
  * Returns comprehensive system health metrics
@@ -62,7 +71,7 @@ const getSystemStatus = async (req, res, next) => {
             status: 'success',
             data: {
                 scheduler: {
-                    enabled: true, // TODO: Add actual enable/disable state
+                    enabled: dispatcher ? dispatcher.isRunning : true, // Use actual dispatcher state
                     isLeader: false, // API doesn't participate in election
                     leaderId: leaderId || 'none',
                     leaderUptime: 0, // Not applicable for API

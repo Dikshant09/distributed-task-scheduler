@@ -45,7 +45,10 @@ const processTask = async (msg) => {
         return;
     }
 
-    // 3. Start Lease Renewer
+    // 3. Update worker status to executing
+    await processRegistry.updateWorkerStatus(WORKER_ID, 'executing', task_id);
+
+    // 4. Start Lease Renewer
     const renewInterval = setInterval(async () => {
         try {
             const renewed = await tasksRepo.renewLease(task_id, WORKER_ID);
@@ -107,6 +110,8 @@ const processTask = async (msg) => {
         await tasksRepo.updateStatus(task_id, 'FAILED', null, nextRetryAt);
     } finally {
         clearInterval(renewInterval);
+        // Update worker status back to idle
+        await processRegistry.updateWorkerStatus(WORKER_ID, 'idle', null);
         // 7. ACK
         await redisQueue.ack(messageId);
     }

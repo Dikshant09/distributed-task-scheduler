@@ -60,7 +60,7 @@ function Admin() {
             </div>
 
             <div className="admin-section">
-                <h3>Active Workers ({workers.length})</h3>
+                <h3>Workers ({workers.filter(w => w.status === 'ALIVE').length} Active, {workers.filter(w => w.status === 'DEAD').length} Dead)</h3>
                 <table className="workers-table">
                     <thead>
                         <tr>
@@ -71,10 +71,12 @@ function Admin() {
                     </thead>
                     <tbody>
                         {workers.map(worker => (
-                            <tr key={worker.worker_id}>
+                            <tr key={worker.worker_id} className={worker.status === 'DEAD' ? 'worker-dead' : ''}>
                                 <td>{worker.worker_id}</td>
                                 <td>
-                                    <span className="status-badge status-success">Active</span>
+                                    <span className={`status-badge ${worker.status === 'ALIVE' ? 'status-alive' : 'status-dead'}`}>
+                                        {worker.status === 'ALIVE' ? '✅ Active' : '💀 Dead'}
+                                    </span>
                                 </td>
                                 <td>{new Date(worker.last_heartbeat).toLocaleString()}</td>
                             </tr>

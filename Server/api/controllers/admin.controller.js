@@ -3,6 +3,7 @@ const dispatcher = require('../../scheduler/task-dispatcher/dispatcher');
 const workerMonitor = require('../../scheduler/heartbeat/worker-monitor');
 const dlqHandler = require('../../scheduler/dead-letter/dlq-handler');
 const processRegistry = require('../../common/process-registry');
+const schedulerState = require('../../common/scheduler-state');
 
 /**
  * POST /admin/scheduler/enable
@@ -12,6 +13,7 @@ const enableScheduler = async (req, res, next) => {
     try {
         logger.info('Enabling scheduler via admin API');
 
+        await schedulerState.setEnabled(true);
         dispatcher.start();
         workerMonitor.start();
         dlqHandler.start();
@@ -33,6 +35,7 @@ const disableScheduler = async (req, res, next) => {
     try {
         logger.info('Disabling scheduler via admin API');
 
+        await schedulerState.setEnabled(false);
         dispatcher.stop();
         workerMonitor.stop();
         dlqHandler.stop();

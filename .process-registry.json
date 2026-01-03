@@ -1,24 +1,17 @@
 {
-  "schedulers": [
-    {
-      "id": "scheduler-45trzfstw",
-      "pid": 72837,
-      "isLeader": true,
-      "startedAt": "2026-01-03T06:59:13.129Z"
-    }
-  ],
+  "schedulers": [],
   "workers": [
     {
-      "id": "worker-f869f0a1",
-      "pid": 72917,
+      "id": "worker-1c0c2055",
+      "pid": 77703,
       "status": "active",
-      "startedAt": "2026-01-03T06:59:13.606Z"
+      "startedAt": "2026-01-03T07:18:13.620Z"
     },
     {
-      "id": "worker-119abf1c",
-      "pid": 72918,
+      "id": "worker-5b000a4a",
+      "pid": 77704,
       "status": "active",
-      "startedAt": "2026-01-03T06:59:13.615Z"
+      "startedAt": "2026-01-03T07:18:13.630Z"
     }
   ]
 }

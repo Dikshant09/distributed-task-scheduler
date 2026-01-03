@@ -1,12 +1,12 @@
 const db = require('../index');
 
 const upsertHeartbeat = async (workerId) => {
-  // Enforce max 10 workers limit
+  // Enforce max 3 workers limit (matching demo configuration)
   const countRes = await db.query('SELECT COUNT(*) FROM workers');
   const workerCount = parseInt(countRes.rows[0].count);
 
   // If we're at the limit and this is a new worker, remove the oldest one
-  if (workerCount >= 10) {
+  if (workerCount >= 3) {
     const existingWorker = await db.query('SELECT 1 FROM workers WHERE worker_id = $1', [workerId]);
 
     if (existingWorker.rows.length === 0) {

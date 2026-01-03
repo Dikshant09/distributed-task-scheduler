@@ -104,13 +104,22 @@ function Dashboard() {
                     <h3>Worker Instances ({instances.workers.length})</h3>
                     <div className="instances-grid">
                         {instances.workers.map(worker => (
-                            <div key={worker.id} className="instance-card worker">
+                            <div key={worker.id} className={`instance-card worker ${worker.status === 'executing' ? 'executing' : ''}`}>
                                 <div className="instance-header">
                                     <span className="instance-id">{worker.id}</span>
-                                    <span className="worker-badge">⚙️ Active</span>
+                                    {worker.status === 'executing' ? (
+                                        <span className="worker-badge executing">⚙️ Executing</span>
+                                    ) : (
+                                        <span className="worker-badge">💤 Idle</span>
+                                    )}
                                 </div>
                                 <div className="instance-details">
                                     <div>PID: {worker.pid}</div>
+                                    {worker.currentTaskId && (
+                                        <div className="current-task">
+                                            Task: <code>{worker.currentTaskId.substring(0, 8)}...</code>
+                                        </div>
+                                    )}
                                     <div>Started: {new Date(worker.startedAt).toLocaleTimeString()}</div>
                                 </div>
                             </div>

@@ -29,6 +29,9 @@ echo "✅ Infrastructure services are running"
 echo "🧹 Cleaning up stale workers..."
 psql -U user -d task_scheduler -c "DELETE FROM workers WHERE last_heartbeat < NOW() - INTERVAL '1 minute';" > /dev/null 2>&1 || true
 
+# Clean up stale process instances
+psql -U user -d task_scheduler -c "DELETE FROM process_instances;" > /dev/null 2>&1 || true
+
 # Kill any existing processes on ports
 echo "🧹 Cleaning up existing processes..."
 lsof -ti:3000 | xargs kill -9 2>/dev/null || true
