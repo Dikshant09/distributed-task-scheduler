@@ -2,6 +2,7 @@ const logger = require('../../common/logger');
 const dispatcher = require('../../scheduler/task-dispatcher/dispatcher');
 const workerMonitor = require('../../scheduler/heartbeat/worker-monitor');
 const dlqHandler = require('../../scheduler/dead-letter/dlq-handler');
+const processRegistry = require('../../common/process-registry');
 
 /**
  * POST /admin/scheduler/enable
@@ -47,16 +48,41 @@ const disableScheduler = async (req, res, next) => {
 
 /**
  * POST /admin/faults/kill-leader
- * Simulate leader failure by forcing process exit
+ * Simulate leader failure by killing the current leader process
  */
 const killLeader = async (req, res, next) => {
     try {
-        logger.warn('FAULT INJECTION: Kill leader requested (not supported when API runs separately from scheduler)');
+        logger.warn('FAULT INJECTION: Kill leader requested');
 
-        res.json({
-            status: 'error',
-            message: 'Kill leader not supported when API runs separately from scheduler. Use: pkill -f "node.*scheduler/index.js" to manually kill a scheduler instance.'
-        });
+        const leader = await processRegistry.getLeader();
+
+        if (!leader) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'No leader found in process registry'
+            });
+        }
+
+        logger.warn(`Killing leader ${leader.id} (PID: ${leader.pid})`);
+
+        try {
+            process.kill(leader.pid, 'SIGTERM');
+
+            res.json({
+                status: 'success',
+                message: `Leader ${leader.id} (PID: ${leader.pid}) killed. Standby should become leader within 10-15 seconds.`,
+                data: {
+                    killedLeader: leader.id,
+                    pid: leader.pid
+                }
+            });
+        } catch (killError) {
+            logger.error('Failed to kill leader process', killError);
+            res.status(500).json({
+                status: 'error',
+                message: `Failed to kill leader process: ${killError.message}`
+            });
+        }
     } catch (error) {
         next(error);
     }
@@ -64,16 +90,58 @@ const killLeader = async (req, res, next) => {
 
 /**
  * POST /admin/faults/kill-worker
- * Simulate worker failure by killing a random worker process
+ * Simulate worker failure by killing a worker process
+ * Optional body param: { workerId: 'worker-xxx' } to kill specific worker
  */
 const killWorker = async (req, res, next) => {
     try {
-        logger.warn('FAULT INJECTION: Simulating worker kill (not implemented in single-process mode)');
+        const { workerId } = req.body || {};
+        logger.warn(`FAULT INJECTION: Kill worker requested${workerId ? ` (${workerId})` : ' (random)'}`);
 
-        res.json({
-            status: 'success',
-            message: 'Worker kill simulated (requires multi-process deployment)'
-        });
+        const workers = await processRegistry.getWorkers();
+
+        if (workers.length === 0) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'No workers found in process registry'
+            });
+        }
+
+        // Select worker to kill
+        let targetWorker;
+        if (workerId) {
+            targetWorker = workers.find(w => w.id === workerId);
+            if (!targetWorker) {
+                return res.status(404).json({
+                    status: 'error',
+                    message: `Worker ${workerId} not found`
+                });
+            }
+        } else {
+            // Kill random worker
+            targetWorker = workers[Math.floor(Math.random() * workers.length)];
+        }
+
+        logger.warn(`Killing worker ${targetWorker.id} (PID: ${targetWorker.pid})`);
+
+        try {
+            process.kill(targetWorker.pid, 'SIGTERM');
+
+            res.json({
+                status: 'success',
+                message: `Worker ${targetWorker.id} (PID: ${targetWorker.pid}) killed. Tasks will be reassigned after lease expiry.`,
+                data: {
+                    killedWorker: targetWorker.id,
+                    pid: targetWorker.pid
+                }
+            });
+        } catch (killError) {
+            logger.error('Failed to kill worker process', killError);
+            res.status(500).json({
+                status: 'error',
+                message: `Failed to kill worker process: ${killError.message}`
+            });
+        }
     } catch (error) {
         next(error);
     }

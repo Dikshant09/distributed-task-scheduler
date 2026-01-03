@@ -1,52 +1,64 @@
 import React, { useState, useEffect } from 'react';
-import { getSystemStatus, killLeader, killWorker, pauseQueue, disableScheduler } from '../api/api';
+import { getSystemStatus, getInstances, killLeader, killWorker, pauseQueue, disableScheduler } from '../api/api';
 import './Dashboard.css';
 
 function Dashboard() {
     const [status, setStatus] = useState(null);
+    const [instances, setInstances] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [message, setMessage] = useState(null);
 
     useEffect(() => {
-        const fetchStatus = async () => {
+        const fetchData = async () => {
             try {
-                const res = await getSystemStatus();
-                setStatus(res.data.data);
+                const [statusRes, instancesRes] = await Promise.all([
+                    getSystemStatus(),
+                    getInstances()
+                ]);
+                setStatus(statusRes.data.data);
+                setInstances(instancesRes.data.data);
                 setLoading(false);
             } catch (err) {
-                console.error('Failed to fetch status', err);
+                console.error('Failed to fetch data', err);
                 setLoading(false);
             }
         };
 
-        fetchStatus();
-        const interval = setInterval(fetchStatus, 2000);
+        fetchData();
+        const interval = setInterval(fetchData, 2000);
         return () => clearInterval(interval);
     }, []);
 
+    const showMessage = (msg, type = 'info') => {
+        setMessage({ text: msg, type });
+        setTimeout(() => setMessage(null), 5000);
+    };
+
     const handleFault = async (faultType) => {
         try {
+            let response;
             switch (faultType) {
                 case 'kill-leader':
-                    await killLeader();
-                    alert('Leader process will terminate');
+                    response = await killLeader();
+                    showMessage(response.data.message, 'success');
                     break;
                 case 'kill-worker':
-                    await killWorker();
-                    alert('Worker kill simulated');
+                    response = await killWorker();
+                    showMessage(response.data.message, 'success');
                     break;
                 case 'pause-queue':
-                    await pauseQueue(10000);
-                    alert('Queue paused for 10 seconds');
+                    response = await pauseQueue(10000);
+                    showMessage('Queue paused for 10 seconds', 'info');
                     break;
                 case 'disable-scheduler':
-                    await disableScheduler();
-                    alert('Scheduler disabled');
+                    response = await disableScheduler();
+                    showMessage('Scheduler disabled', 'warning');
                     break;
                 default:
                     break;
             }
         } catch (err) {
-            alert(`Fault injection failed: ${err.message}`);
+            showMessage(err.response?.data?.message || err.message, 'error');
         }
     };
 
@@ -57,21 +69,62 @@ function Dashboard() {
         <div className="dashboard">
             <h2>System Health</h2>
 
+            {/* Message Banner */}
+            {message && (
+                <div className={`message-banner message-${message.type}`}>
+                    {message.text}
+                </div>
+            )}
+
+            {/* Scheduler Instances */}
+            {instances && (
+                <div className="instances-section">
+                    <h3>Scheduler Instances ({instances.schedulers.length})</h3>
+                    <div className="instances-grid">
+                        {instances.schedulers.map(scheduler => (
+                            <div key={scheduler.id} className={`instance-card ${scheduler.isLeader ? 'leader' : 'standby'}`}>
+                                <div className="instance-header">
+                                    <span className="instance-id">{scheduler.id}</span>
+                                    {scheduler.isLeader && <span className="leader-badge">👑 Leader</span>}
+                                    {!scheduler.isLeader && <span className="standby-badge">⏸️ Standby</span>}
+                                </div>
+                                <div className="instance-details">
+                                    <div>PID: {scheduler.pid}</div>
+                                    <div>Started: {new Date(scheduler.startedAt).toLocaleTimeString()}</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Worker Instances */}
+            {instances && (
+                <div className="instances-section">
+                    <h3>Worker Instances ({instances.workers.length})</h3>
+                    <div className="instances-grid">
+                        {instances.workers.map(worker => (
+                            <div key={worker.id} className="instance-card worker">
+                                <div className="instance-header">
+                                    <span className="instance-id">{worker.id}</span>
+                                    <span className="worker-badge">⚙️ Active</span>
+                                </div>
+                                <div className="instance-details">
+                                    <div>PID: {worker.pid}</div>
+                                    <div>Started: {new Date(worker.startedAt).toLocaleTimeString()}</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* System Metrics */}
+            <h3>System Metrics</h3>
             <div className="metrics-grid">
                 <div className="metric-card">
                     <div className="metric-label">Scheduler State</div>
                     <div className="metric-value">{status.scheduler.enabled ? 'Enabled' : 'Disabled'}</div>
-                </div>
-
-                <div className="metric-card">
-                    <div className="metric-label">Leader ID</div>
-                    <div className="metric-value">{status.scheduler.leaderId}</div>
-                </div>
-
-                <div className="metric-card">
-                    <div className="metric-label">Leader Uptime</div>
-                    <div className="metric-value">{status.scheduler.leaderUptime}s</div>
                 </div>
 
                 <div className="metric-card">
@@ -114,14 +167,14 @@ function Dashboard() {
                 </div>
             </div>
 
-            {/* Fault Simulation */}
+            {/* Failure Simulation */}
             <h3>Failure Simulation</h3>
             <div className="fault-buttons">
                 <button className="fault-btn danger" onClick={() => handleFault('kill-leader')}>
                     ❌ Kill Leader
                 </button>
                 <button className="fault-btn danger" onClick={() => handleFault('kill-worker')}>
-                    ❌ Kill Worker
+                    ❌ Kill Random Worker
                 </button>
                 <button className="fault-btn warning" onClick={() => handleFault('pause-queue')}>
                     ⏸️ Pause Queue (10s)

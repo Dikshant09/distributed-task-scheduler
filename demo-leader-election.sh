@@ -49,11 +49,19 @@ node scheduler/index.js > ../logs/scheduler2.log 2>&1 &
 SCHEDULER2_PID=$!
 echo "  ✅ Scheduler 2 started (PID: $SCHEDULER2_PID)"
 
-# Start Worker
-echo "🔧 Starting Worker..."
-npm run dev:worker > ../logs/worker.log 2>&1 &
-WORKER_PID=$!
-echo "  ✅ Worker started (PID: $WORKER_PID)"
+# Start 3 Workers
+echo "🔧 Starting Workers..."
+npm run dev:worker > ../logs/worker1.log 2>&1 &
+WORKER1_PID=$!
+echo "  ✅ Worker 1 started (PID: $WORKER1_PID)"
+
+npm run dev:worker > ../logs/worker2.log 2>&1 &
+WORKER2_PID=$!
+echo "  ✅ Worker 2 started (PID: $WORKER2_PID)"
+
+npm run dev:worker > ../logs/worker3.log 2>&1 &
+WORKER3_PID=$!
+echo "  ✅ Worker 3 started (PID: $WORKER3_PID)"
 
 cd ..
 
@@ -80,17 +88,20 @@ echo "📝 Logs available at:"
 echo "  - API:         logs/api.log"
 echo "  - Scheduler 1: logs/scheduler1.log"
 echo "  - Scheduler 2: logs/scheduler2.log"
-echo "  - Worker:      logs/worker.log"
+echo "  - Worker 1:    logs/worker1.log"
+echo "  - Worker 2:    logs/worker2.log"
+echo "  - Worker 3:    logs/worker3.log"
 echo "  - Client:      logs/client.log"
 echo ""
 echo "🎯 Leader Election Demo:"
 echo "  1. Check which scheduler is leader:"
-echo "     tail -f logs/scheduler1.log | grep -i leader"
-echo "     tail -f logs/scheduler2.log | grep -i leader"
+echo "     curl http://localhost:3000/instances | jq '.data.schedulers'"
 echo ""
-echo "  2. Kill the leader via UI button"
+echo "  2. Kill the leader via UI button or:"
+echo "     curl -X POST http://localhost:3000/admin/faults/kill-leader"
 echo ""
 echo "  3. Watch the standby become leader:"
 echo "     tail -f logs/scheduler*.log | grep -i 'became leader'"
 echo ""
 echo "To stop all services, run: ./stop.sh"
+

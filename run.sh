@@ -42,13 +42,29 @@ npm run dev:api > ../logs/api.log 2>&1 &
 API_PID=$!
 echo "  ✅ API started (PID: $API_PID)"
 
-npm run dev:scheduler > ../logs/scheduler.log 2>&1 &
-SCHEDULER_PID=$!
-echo "  ✅ Scheduler started (PID: $SCHEDULER_PID)"
+# Start 2 scheduler instances for leader election
+node scheduler/index.js > ../logs/scheduler1.log 2>&1 &
+SCHEDULER1_PID=$!
+echo "  ✅ Scheduler 1 started (PID: $SCHEDULER1_PID)"
 
-npm run dev:worker > ../logs/worker.log 2>&1 &
-WORKER_PID=$!
-echo "  ✅ Worker started (PID: $WORKER_PID)"
+sleep 2
+
+node scheduler/index.js > ../logs/scheduler2.log 2>&1 &
+SCHEDULER2_PID=$!
+echo "  ✅ Scheduler 2 started (PID: $SCHEDULER2_PID)"
+
+# Start 3 worker instances
+npm run dev:worker > ../logs/worker1.log 2>&1 &
+WORKER1_PID=$!
+echo "  ✅ Worker 1 started (PID: $WORKER1_PID)"
+
+npm run dev:worker > ../logs/worker2.log 2>&1 &
+WORKER2_PID=$!
+echo "  ✅ Worker 2 started (PID: $WORKER2_PID)"
+
+npm run dev:worker > ../logs/worker3.log 2>&1 &
+WORKER3_PID=$!
+echo "  ✅ Worker 3 started (PID: $WORKER3_PID)"
 
 cd ..
 
@@ -71,11 +87,22 @@ echo "📊 Service URLs:"
 echo "  - Client:    http://localhost:5173"
 echo "  - API:       http://localhost:3000"
 echo ""
+echo "📊 System Configuration:"
+echo "  - Schedulers: 2 (1 leader, 1 standby)"
+echo "  - Workers:    3"
+echo ""
 echo "📝 Logs available at:"
-echo "  - API:       logs/api.log"
-echo "  - Scheduler: logs/scheduler.log"
-echo "  - Worker:    logs/worker.log"
-echo "  - Client:    logs/client.log"
+echo "  - API:         logs/api.log"
+echo "  - Scheduler 1: logs/scheduler1.log"
+echo "  - Scheduler 2: logs/scheduler2.log"
+echo "  - Worker 1:    logs/worker1.log"
+echo "  - Worker 2:    logs/worker2.log"
+echo "  - Worker 3:    logs/worker3.log"
+echo "  - Client:      logs/client.log"
+echo ""
+echo "💡 Check leader status:"
+echo "   curl http://localhost:3000/instances | jq '.data.schedulers'"
 echo ""
 echo "To stop all services, run: ./stop.sh"
 echo "Or press Ctrl+C and run: pkill -f 'node.*server.js|node.*scheduler|node.*worker|vite'"
+

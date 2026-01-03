@@ -1,0 +1,24 @@
+{
+  "schedulers": [
+    {
+      "id": "scheduler-45trzfstw",
+      "pid": 72837,
+      "isLeader": true,
+      "startedAt": "2026-01-03T06:59:13.129Z"
+    }
+  ],
+  "workers": [
+    {
+      "id": "worker-f869f0a1",
+      "pid": 72917,
+      "status": "active",
+      "startedAt": "2026-01-03T06:59:13.606Z"
+    },
+    {
+      "id": "worker-119abf1c",
+      "pid": 72918,
+      "status": "active",
+      "startedAt": "2026-01-03T06:59:13.615Z"
+    }
+  ]
+}

@@ -6,6 +6,7 @@ const HeartbeatSender = require('./heartbeat/heartbeat-sender');
 const { executeTask } = require('./executor/task-executor');
 const { generateId } = require('../common/utils/uuid');
 const { truncateOutput } = require('../common/utils/truncate-output');
+const processRegistry = require('../common/process-registry');
 
 const WORKER_ID = `worker-${generateId().substring(0, 8)}`;
 const heartbeat = new HeartbeatSender(WORKER_ID);
@@ -113,8 +114,23 @@ const processTask = async (msg) => {
 
 const startWorker = async () => {
     logger.info(`Starting Worker ${WORKER_ID}`);
+
+    // Register worker instance
+    await processRegistry.registerWorker(WORKER_ID, process.pid);
+
     heartbeat.start();
     await redisQueue.initGroup();
+
+    // Graceful shutdown handler
+    const shutdown = async () => {
+        logger.info('Worker shutting down...');
+        await processRegistry.unregisterWorker(WORKER_ID);
+        heartbeat.stop();
+        process.exit(0);
+    };
+
+    process.on('SIGTERM', shutdown);
+    process.on('SIGINT', shutdown);
 
     while (true) {
         try {
