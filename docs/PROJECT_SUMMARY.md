@@ -2,9 +2,11 @@
 
 ## Executive Overview
 
-A **production-grade distributed task scheduler** with real-time visualization, fault tolerance, and chaos engineering capabilities. Built to demonstrate distributed systems concepts including leader election, lease-based execution, and automatic failure recovery.
+A **distributed task scheduler with real-time visualization** designed as an interactive demo and learning tool. Built to demonstrate distributed systems concepts including leader election, lease-based execution, and automatic failure recovery.
 
-**Live Demo**: [To be deployed on AWS/Azure]
+> **Purpose**: This is an educational visualizer, not a production scheduler. The goal is to show how distributed systems work, not to compete with Celery, Temporal, or AWS Step Functions.
+
+**Live Demo**: [To be deployed on single VM for ~$10/month]
 
 ---
 
@@ -171,7 +173,7 @@ Built-in failure simulation for testing resilience:
 - Designed and built a fault-tolerant distributed task scheduler with Etcd-based leader election achieving < 15s failover
 - Implemented lease-based execution preventing duplicate task processing across 5+ worker instances
 - Built real-time WebSocket-based monitoring dashboard with interactive topology visualization
-- Deployed on AWS/Azure with containerized microservices handling 1000+ tasks/second throughput
+- Validated correctness and failure recovery under load, with local benchmarks reaching ~1000 lightweight jobs/sec
 - Implemented chaos engineering features for testing system resilience and failure recovery
 
 ### Quantifiable Impact Statements
@@ -270,6 +272,19 @@ Built-in failure simulation for testing resilience:
 | Redis (small) | ~$20 | ~$25 |
 | Etcd (3x t3.micro) | ~$30 | ~$35 |
 | **Total (demo)** | **~$135-185/mo** | **~$155-205/mo** |
+
+### Minimal-Cost Demo Deployment (Recommended)
+
+For a public demo/visualizer, use a single small VM:
+
+| Component | Cost |
+|-----------|------|
+| VM (Azure B1s / AWS t3.micro) | ~$5-8/mo |
+| Storage | ~$1/mo |
+| Bandwidth | ~$0-2/mo |
+| **Total** | **~$7-12/mo** |
+
+**See:** [docs/DEPLOYMENT_GUIDE.md](file:///Users/hwaiting_dk/Repos/distributed-task-scheduler/docs/DEPLOYMENT_GUIDE.md) for Docker Compose setup.
 
 *Note: Costs are estimates for demo/development workloads. Production workloads will vary.*
 

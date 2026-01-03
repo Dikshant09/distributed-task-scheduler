@@ -2,6 +2,8 @@
 
 A comprehensive guide to the architectural decisions made in this distributed task scheduler, with interview-ready explanations.
 
+> **Important**: This project is a **distributed systems visualizer and learning tool**, not a production scheduler. Design decisions optimize for **clarity, demonstration, and low-cost hosting** rather than maximum throughput or enterprise features.
+
 ---
 
 ## Table of Contents
@@ -399,10 +401,425 @@ const delay = Math.min(
 
 ---
 
+## Comprehensive Interview Q&A
+
+### Fundamentals
+
+#### Q: Why do you need a queue at all? Can't you just poll the database?
+
+**Short Answer:** Decoupling, load leveling, and reliability.
+
+**Detailed Answer:**
+> "Without a queue, workers would poll the database constantly, creating contention. The queue decouples dispatch from execution:
+> - **Decoupling**: Scheduler and workers don't need to be online simultaneously
+> - **Load leveling**: Bursts of tasks don't overwhelm workers
+> - **Consumer groups**: Redis Streams automatically load-balance across workers
+> - **Retry semantics**: Built-in ACK/NACK for reliable delivery
+> 
+> The database could work for low throughput, but queues are the industry standard for task distribution."
+
+---
+
+#### Q: SQL or NoSQL? Why PostgreSQL?
+
+**Short Answer:** ACID transactions for lease acquisition and strong consistency.
+
+**Why SQL (PostgreSQL):**
+| Requirement | PostgreSQL | NoSQL (MongoDB/DynamoDB) |
+|-------------|-----------|-------------------------|
+| Atomic lease acquisition | ✅ Single UPDATE | ❌ Requires optimistic locking |
+| Consistent reads | ✅ Guaranteed | ⚠️ Eventually consistent |
+| Complex queries | ✅ Full SQL | ❌ Limited |
+| Transactions | ✅ ACID | ⚠️ Limited |
+| JSONB flexibility | ✅ Yes | ✅ Native |
+
+**Interview Answer:**
+> "PostgreSQL gives us ACID transactions which are critical for lease-based execution. When a worker acquires a task, we use `UPDATE...RETURNING` atomically—this guarantees only one worker gets the lease. With DynamoDB, we'd need conditional writes with version checks, which is more complex and has higher latency."
+
+---
+
+#### Q: Do you need an API Gateway or Load Balancer?
+
+**For This Demo:** No—single API instance is sufficient.
+
+**For Production:**
+
+| Component | Purpose | When Needed |
+|-----------|---------|-------------|
+| **Load Balancer** | Distribute traffic across API instances | Multiple API pods |
+| **API Gateway** | Rate limiting, auth, routing | Multi-service architecture |
+| **Reverse Proxy** | SSL termination, static files | Production deployment |
+
+**Interview Answer:**
+> "For the demo, a single API instance handles everything. In production, I'd add an ALB/NLB for horizontal scaling and health checks. An API gateway would add rate limiting and authentication. For this visualizer, that complexity isn't needed."
+
+---
+
+### Failure Scenarios
+
+#### Q: What happens when a worker fails mid-execution?
+
+**Scenario:** Worker crashes while processing a task.
+
+**Recovery Flow:**
+```
+1. Worker acquires lease (30-second expiry)
+2. Worker starts executing task
+3. Worker crashes (no heartbeat, no lease renewal)
+4. 30 seconds pass → lease expires
+5. Scheduler's worker monitor detects dead worker
+6. Task status reset to PENDING (lease_expiry < NOW())
+7. Another worker picks up task from queue
+8. Task completes successfully
+```
+
+**Interview Answer:**
+> "The lease expires in 30 seconds. When the worker monitor detects a dead worker (no heartbeat for 15s), it releases all leases held by that worker. The tasks return to PENDING and are re-dispatched. The key insight is that lease expiry is the safety net—we don't need complex distributed coordination."
+
+---
+
+#### Q: What happens when the leader fails mid-dispatch?
+
+**Scenario:** Leader scheduler crashes while dispatching tasks.
+
+**Recovery Flow:**
+```
+1. Leader is dispatching tasks to Redis
+2. Leader crashes
+3. Etcd lease expires (10 seconds)
+4. Standby schedulers detect leadership vacancy
+5. New leader elected within ~15 seconds
+6. New leader resumes dispatch loop
+7. Idempotency key prevents duplicate jobs
+```
+
+**What about in-flight dispatches?**
+- Tasks already in Redis → Workers process normally
+- Tasks marked DISPATCHED but not in Redis → Stay DISPATCHED (orphaned)
+- Solution: Periodic cleanup resets old DISPATCHED tasks to PENDING
+
+**Interview Answer:**
+> "Etcd's lease expires in 10 seconds, triggering re-election. A standby becomes leader and resumes dispatching. Tasks already in the queue complete normally. For tasks that were being dispatched mid-crash, we have a cleanup job that resets stale DISPATCHED tasks back to PENDING."
+
+---
+
+#### Q: How do you handle network partitions?
+
+**Scenario:** Network splits between scheduler and database/Redis.
+
+**Split-Brain Prevention:**
+```
+Scheduler ←✗→ Etcd
+    ↓
+Scheduler loses Etcd connection
+    ↓
+Lease cannot be renewed
+    ↓
+Lease expires (10s)
+    ↓
+Scheduler stops dispatching (no longer leader)
+    ↓
+Another scheduler on the healthy partition becomes leader
+```
+
+**Why This Works:**
+- Leader MUST maintain Etcd connection to keep lease
+- If leader is partitioned from Etcd, it automatically demotes itself
+- New leader on healthy side takes over
+
+**Interview Answer:**
+> "We use Etcd leases as a heartbeat. If a scheduler can't reach Etcd, it loses its lease and stops dispatching. This prevents split-brain where two leaders dispatch simultaneously. The CAP theorem trade-off here is: we choose consistency over availability."
+
+---
+
+#### Q: What if Redis goes down?
+
+**Scenario:** Redis becomes unavailable.
+
+**Impact:**
+- Scheduler cannot push to queue → Dispatch fails
+- Workers cannot consume → Execution stalls
+- BUT: Tasks remain safe in PostgreSQL
+
+**Recovery:**
+```
+1. Redis dies
+2. Scheduler dispatch loop fails (catches error)
+3. Tasks stay PENDING in database
+4. Redis recovers
+5. Scheduler resumes dispatching
+6. Tasks flow through normally
+```
+
+**Interview Answer:**
+> "This is why the database is the source of truth. If Redis dies, we can't dispatch, but no data is lost. Tasks remain PENDING in PostgreSQL. When Redis recovers, the scheduler resumes dispatching. The queue is just a delivery mechanism, not a storage system."
+
+---
+
+#### Q: What if the database goes down?
+
+**Scenario:** PostgreSQL becomes unavailable.
+
+**Impact:**
+- API cannot create tasks → 503 errors
+- Scheduler cannot query pending tasks → Dispatch stops
+- Workers cannot acquire leases → Execution stops
+- System effectively halts
+
+**Recovery:**
+```
+1. PostgreSQL dies
+2. All services detect connection failure
+3. System halts gracefully
+4. PostgreSQL recovers
+5. Connections re-established
+6. System resumes from where it left off
+```
+
+**Interview Answer:**
+> "Database failure halts the system—this is intentional. We prioritize data integrity over availability (CP in CAP). No tasks are lost; they just wait. When the DB recovers, everything resumes. For higher availability, we'd add read replicas and a primary failover."
+
+---
+
+### Lease Mechanics
+
+#### Q: How exactly does the lease work?
+
+**Lease Acquisition (Atomic):**
+```sql
+UPDATE tasks
+SET status = 'RUNNING',
+    assigned_worker_id = 'worker-123',
+    lease_expiry = NOW() + INTERVAL '30 seconds'
+WHERE id = 'task-abc'
+AND (lease_expiry IS NULL OR lease_expiry < NOW())
+RETURNING *;
+```
+
+**Why This Works:**
+- Single atomic statement (no race conditions)
+- `WHERE lease_expiry < NOW()` prevents stealing active leases
+- RETURNING confirms acquisition (empty = lease stolen)
+
+**Lease Renewal (Long-running tasks):**
+```sql
+UPDATE tasks
+SET lease_expiry = NOW() + INTERVAL '30 seconds'
+WHERE id = 'task-abc'
+AND assigned_worker_id = 'worker-123';
+```
+
+**Lease Expiry (Worker death):**
+- If worker dies, no renewal happens
+- After 30 seconds, `lease_expiry < NOW()` becomes true
+- Any worker can now acquire the task
+
+**Interview Answer:**
+> "The lease is a database column with an expiry timestamp. Workers acquire it atomically—only one can succeed. Long tasks renew every 10 seconds (30s lease, 10s renewal = 20s buffer). If the worker dies, the lease expires naturally and another worker takes over."
+
+---
+
+#### Q: Why 30-second lease? Why not shorter/longer?
+
+| Lease Duration | Pros | Cons |
+|---------------|------|------|
+| **5 seconds** | Fast recovery | High renewal overhead |
+| **30 seconds** | Balanced | Our choice |
+| **5 minutes** | Low overhead | Slow recovery |
+
+**Our Choice:** 30 seconds with 10-second renewal
+
+**Why:**
+- **20-second buffer** for network issues
+- **Reasonable recovery time** for demos
+- **Low overhead** (renewal every 10s, not every 1s)
+
+**Interview Answer:**
+> "30 seconds balances quick recovery against renewal overhead. If a worker dies, another picks up within 30 seconds—acceptable for most use cases. For time-critical systems, you'd shorten it, but that increases database load."
+
+---
+
+### Architecture Deep Dives
+
+#### Q: Why separate API, Scheduler, and Worker?
+
+**3-Service Split Benefits:**
+
+| Service | Responsibility | Scaling | Failure Mode |
+|---------|---------------|---------|--------------|
+| **API** | Accept user intent | Stateless, horizontal | Lose writes |
+| **Scheduler** | Time-based dispatch | Leader-elected (1 active) | Lose dispatch temporarily |
+| **Worker** | Execute tasks | Horizontal, auto-distributing | Lose execution capacity |
+
+**Why Not Monolithic?**
+- Worker crash shouldn't affect API
+- Scheduler crash shouldn't prevent task creation
+- Each scales independently
+
+**Interview Answer:**
+> "Each service has a single responsibility. API doesn't care about execution—it just persists intent. Scheduler bridges time to execution. Workers just execute. If workers crash, API still accepts jobs. If scheduler crashes, workers still finish current tasks. Blast radius is contained."
+
+---
+
+#### Q: How do you handle poison messages (tasks that always fail)?
+
+**Problem:** A task that always throws an exception would retry forever.
+
+**Solution: Dead Letter Queue (DLQ)**
+
+```javascript
+if (task.attempt >= task.max_attempts) {
+    await tasksRepo.moveToDLQ(task.id, 'Max retry attempts exceeded');
+} else {
+    await tasksRepo.resetForRetry(task.id);
+}
+```
+
+**DLQ Flow:**
+```
+Task fails → Retry 1 → Fails → Retry 2 → ... → Retry 5 → DLQ
+```
+
+**What's in DLQ:**
+- Task ID
+- Original payload
+- Error message
+- Attempt count
+- DLQ reason
+
+**Interview Answer:**
+> "After 5 failed attempts, tasks move to DLQ. This isolates poison messages so they don't block the queue. Operators can inspect DLQ tasks, fix the issue, and manually retry. The system stays healthy while bad tasks are quarantined."
+
+---
+
+#### Q: How would you add priority queues?
+
+**Current State:** Single queue (FIFO)
+
+**Adding Priorities:**
+
+**Option 1: Multiple Redis Streams**
+```
+tasks:high   → Priority workers (dedicated)
+tasks:normal → Regular workers
+tasks:low    → Background workers
+```
+
+**Option 2: Priority field + sorting**
+```sql
+SELECT * FROM tasks
+WHERE status = 'PENDING'
+ORDER BY priority DESC, scheduled_at ASC
+LIMIT 100;
+```
+
+**Interview Answer:**
+> "For priorities, I'd use separate Redis Streams (high/normal/low) with dedicated worker pools. Workers on the high-priority stream only consume from that stream. This provides true priority without complex sorting logic."
+
+---
+
+#### Q: How would you implement rate limiting?
+
+**Problem:** Prevent users from overwhelming the system.
+
+**Approaches:**
+
+**1. API-level (Express middleware):**
+```javascript
+const rateLimit = require('express-rate-limit');
+app.use('/tasks', rateLimit({
+    windowMs: 60 * 1000,  // 1 minute
+    max: 100              // 100 requests/minute
+}));
+```
+
+**2. Token bucket (Redis-based):**
+```javascript
+const key = `rate:${userId}`;
+const current = await redis.incr(key);
+if (current === 1) await redis.expire(key, 60);
+if (current > 100) throw new Error('Rate limited');
+```
+
+**3. Per-task-type limits:**
+- HTTP tasks: 50/minute
+- Shell tasks: 10/minute (more expensive)
+
+**Interview Answer:**
+> "At the API layer, I'd use express-rate-limit for simple request throttling. For more sophisticated limits, a Redis-based token bucket allows per-user or per-task-type rate limiting. The demo doesn't need this, but production would."
+
+---
+
+### Distributed Systems Theory
+
+#### Q: What CAP theorem trade-offs did you make?
+
+**CAP Theorem:** Consistency, Availability, Partition tolerance—pick 2.
+
+**Our Choice: CP (Consistency + Partition tolerance)**
+
+| Component | Trade-off |
+|-----------|-----------|
+| **Leader Election** | CP → Only one leader, even if network partitions |
+| **Lease Acquisition** | CP → Only one worker gets lease |
+| **Task State** | CP → Strong consistency over availability |
+
+**Why Not AP?**
+- Duplicate execution is worse than temporary unavailability
+- Task state must be consistent
+- Leader must be unique
+
+**Interview Answer:**
+> "We choose consistency over availability. If there's a network partition, we'd rather have the system unavailable than risk two leaders dispatching duplicates. For a task scheduler, correctness trumps uptime."
+
+---
+
+#### Q: Is this exactly-once or at-least-once?
+
+**Answer: At-least-once with idempotency**
+
+| Guarantee | Meaning | Our Implementation |
+|-----------|---------|-------------------|
+| At-most-once | Fire and forget | ❌ Not acceptable |
+| At-least-once | Retry until ACK | ✅ Our base guarantee |
+| Exactly-once | Once and only once | ✅ Via idempotency |
+
+**How We Achieve "Effectively Exactly-Once":**
+1. Idempotency key prevents duplicate job creation
+2. Lease prevents duplicate execution
+3. ACK after execution prevents re-delivery
+
+**Interview Answer:**
+> "Technically at-least-once, but effectively exactly-once through idempotency. The consumer is responsible for making tasks idempotent—if a task runs twice, it should produce the same result. True exactly-once requires distributed transactions, which we avoid for simplicity."
+
+---
+
+#### Q: How would this scale to millions of tasks?
+
+**Bottlenecks and Solutions:**
+
+| Bottleneck | Solution |
+|------------|----------|
+| Database writes | Partitioning by tenant/date |
+| Database reads | Read replicas |
+| Redis throughput | Redis Cluster |
+| Worker capacity | Add more workers |
+| Leader dispatch rate | Batch dispatch, multiple queues |
+
+**Scaling Numbers:**
+- PostgreSQL: ~10K writes/sec (single instance)
+- Redis: ~100K ops/sec (single instance)
+- Workers: Linear scaling
+
+**Interview Answer:**
+> "Current architecture handles ~1000 tasks/sec on single instances. For millions, I'd partition the database by tenant or date, add read replicas, move to Redis Cluster, and potentially shard queues by task type. The worker pool scales linearly."
+
+---
+
 ## Summary: Key Talking Points
 
 ### The One-Liner
-> "I built a distributed task scheduler that demonstrates leader election, lease-based execution, and fault tolerance—with a real-time UI that visualizes failures and recovery."
+> "I built a distributed task scheduler visualizer that demonstrates leader election, lease-based execution, and fault tolerance—with a real-time UI that shows failures and recovery live."
 
 ### Top 5 Design Decisions to Highlight
 
@@ -412,16 +829,21 @@ const delay = Math.min(
 4. **At-least-once + idempotency** → "Reliable delivery without distributed transactions"
 5. **Real-time visualization** → "See failures and recovery live"
 
-### Questions They Might Ask
+### Quick Reference Table
 
-| Question | Key Point |
-|----------|-----------|
-| "What if Redis dies?" | Jobs safe in DB, dispatched on recovery |
-| "What if leader dies mid-dispatch?" | New leader resumes, idempotency prevents duplicates |
-| "What if worker dies mid-execution?" | Lease expires, task reassigned |
-| "How do you prevent duplicate execution?" | Atomic lease acquisition in Postgres |
-| "Why not Kafka?" | Redis Streams simpler, sufficient for scale |
-| "Why not exactly-once?" | At-least-once + idempotency is simpler, equally effective |
+| Question | One-Line Answer |
+|----------|-----------------|
+| Why queue? | Decoupling, load leveling, consumer groups |
+| Why SQL? | ACID for atomic lease acquisition |
+| Why not Kafka? | Redis Streams simpler, sufficient scale |
+| Worker failure? | Lease expires, task reassigned |
+| Leader failure? | Etcd re-election in ~15s |
+| Network partition? | Scheduler loses lease, stops dispatching |
+| Redis failure? | Tasks safe in DB, dispatched on recovery |
+| DB failure? | System halts, resumes on recovery |
+| How leases work? | Atomic UPDATE with expiry timestamp |
+| Exactly-once? | At-least-once + idempotency |
+| CAP trade-off? | CP—consistency over availability |
 
 ---
 

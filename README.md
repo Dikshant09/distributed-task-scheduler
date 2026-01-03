@@ -1,6 +1,8 @@
 # Distributed Task Scheduler
 
-A fault-tolerant distributed task scheduler with real-time visualization, built with Node.js, React, PostgreSQL, Redis, and Etcd.
+A distributed task scheduler with **real-time visualization** designed as an interactive demo and learning tool for distributed systems concepts.
+
+> 🎯 **Purpose**: This is an educational visualizer, not a production scheduler. Built to demonstrate leader election, lease-based execution, fault tolerance, and automatic failure recovery—concepts you can see live in the browser.
 
 ## ✨ Features
 
