@@ -5,6 +5,7 @@ const metrics = require('../../common/metrics');
 const config = require('../../common/config');
 const leaderElection = require('../leader-election/leader-election');
 const schedulerState = require('../../common/scheduler-state');
+const eventLogger = require('../../common/event-logger');
 
 class Dispatcher {
     constructor() {
@@ -64,6 +65,13 @@ class Dispatcher {
             if (dispatchedIds.length > 0) {
                 await tasksRepo.markDispatched(dispatchedIds, leaderEpoch);
                 logger.info(`Dispatched ${dispatchedIds.length} tasks`);
+
+                // Log dispatch events
+                dispatchedIds.forEach(taskId => {
+                    eventLogger.log('TASK_DISPATCHED', `Task ${taskId.substring(0, 8)} dispatched to Redis`, {
+                        taskId
+                    });
+                });
             }
 
         } catch (err) {

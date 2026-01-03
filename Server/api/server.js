@@ -12,6 +12,7 @@ const workerRoutes = require('./routes/workers.routes');
 const systemRoutes = require('./routes/system.routes');
 const adminRoutes = require('./routes/admin.routes');
 const instancesRoutes = require('./routes/instances.routes');
+const eventsRoutes = require('./routes/events.routes');
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use('/workers', workerRoutes);
 app.use('/system', systemRoutes);
 app.use('/instances', instancesRoutes);
 app.use('/admin', adminRoutes);
+app.use('/events', eventsRoutes);
 
 // Error Handler
 app.use(errorHandler);

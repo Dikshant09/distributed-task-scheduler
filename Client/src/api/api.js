@@ -27,4 +27,7 @@ export const killLeader = () => api.post('/admin/faults/kill-leader');
 export const killWorker = (workerId) => api.post('/admin/faults/kill-worker', { workerId });
 export const pauseQueue = (duration) => api.post('/admin/faults/pause-queue', { duration });
 
+// Events
+export const getEvents = (limit = 50) => api.get(`/events?limit=${limit}`);
+
 export default api;

@@ -4,6 +4,7 @@ const workerMonitor = require('../../scheduler/heartbeat/worker-monitor');
 const dlqHandler = require('../../scheduler/dead-letter/dlq-handler');
 const processRegistry = require('../../common/process-registry');
 const schedulerState = require('../../common/scheduler-state');
+const eventLogger = require('../../common/event-logger');
 
 /**
  * POST /admin/scheduler/enable
@@ -17,6 +18,8 @@ const enableScheduler = async (req, res, next) => {
         dispatcher.start();
         workerMonitor.start();
         dlqHandler.start();
+
+        eventLogger.log('SCHEDULER_ENABLED', 'Scheduler enabled via admin API');
 
         res.json({
             status: 'success',
@@ -39,6 +42,8 @@ const disableScheduler = async (req, res, next) => {
         dispatcher.stop();
         workerMonitor.stop();
         dlqHandler.stop();
+
+        eventLogger.log('SCHEDULER_DISABLED', 'Scheduler disabled via admin API');
 
         res.json({
             status: 'success',

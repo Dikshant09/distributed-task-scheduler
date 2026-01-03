@@ -7,6 +7,7 @@ const { executeTask } = require('./executor/task-executor');
 const { generateId } = require('../common/utils/uuid');
 const { truncateOutput } = require('../common/utils/truncate-output');
 const processRegistry = require('../common/process-registry');
+const eventLogger = require('../common/event-logger');
 
 const WORKER_ID = `worker-${generateId().substring(0, 8)}`;
 const heartbeat = new HeartbeatSender(WORKER_ID);
@@ -66,6 +67,11 @@ const processTask = async (msg) => {
 
     // 4. Execute
     try {
+        eventLogger.log('TASK_EXECUTING', `Task ${task_id.substring(0, 8)} executing on ${WORKER_ID}`, {
+            taskId: task_id,
+            workerId: WORKER_ID
+        });
+
         const result = await executeTask(leasedTask);
         const finishedAt = new Date();
 

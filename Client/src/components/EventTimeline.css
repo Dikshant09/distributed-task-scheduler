@@ -1,0 +1,107 @@
+.event-timeline {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.event-timeline h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.event-timeline-loading {
+    padding: 20px;
+    text-align: center;
+    color: #666;
+}
+
+.no-events {
+    text-align: center;
+    color: #999;
+    padding: 20px;
+}
+
+.events-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.event-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    border-left: 4px solid #ddd;
+    background: #f9f9f9;
+    transition: all 0.2s;
+}
+
+.event-item:hover {
+    background: #f0f0f0;
+    transform: translateX(2px);
+}
+
+.event-icon {
+    font-size: 20px;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.event-content {
+    flex: 1;
+}
+
+.event-message {
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.event-time {
+    font-size: 12px;
+    color: #999;
+}
+
+/* Event type colors */
+.event-success {
+    border-left-color: #4CAF50;
+    background: #f1f8f4;
+}
+
+.event-error {
+    border-left-color: #f44336;
+    background: #fef1f0;
+}
+
+.event-info {
+    border-left-color: #2196F3;
+    background: #f0f7ff;
+}
+
+.event-default {
+    border-left-color: #9E9E9E;
+    background: #f9f9f9;
+}
+
+/* Scrollbar styling */
+.events-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.events-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.events-list::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+}
+
+.events-list::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}

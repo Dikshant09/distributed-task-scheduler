@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getSystemStatus, getInstances, killLeader, killWorker, pauseQueue, disableScheduler } from '../api/api';
+import EventTimeline from '../components/EventTimeline';
 import './Dashboard.css';
 
 function Dashboard() {
@@ -127,6 +128,9 @@ function Dashboard() {
                     </div>
                 </div>
             )}
+
+            {/* Event Timeline */}
+            <EventTimeline />
 
             {/* System Metrics */}
             <h3>System Metrics</h3>
