@@ -1,19 +1,43 @@
 #!/bin/bash
-echo "Identifying Leader..."
-# In a real scenario, we'd query etcd or logs. 
-# Here we just kill the first scheduler instance as a demo, 
-# or loop through logs to find who says "I am the leader".
 
-CONTAINER=$(docker-compose logs scheduler | grep "I am the leader" | tail -1 | awk '{print $1}' | cut -d_ -f1,2,3)
+# Script to kill the current leader scheduler for testing failover
 
-if [ -z "$CONTAINER" ]; then
-  echo "Leader not found in logs (or no logs yet). Killing scheduler-1 by default."
-  CONTAINER="distributed-task-scheduler-scheduler-1"
+echo "🔍 Finding current leader scheduler..."
+
+# Get the project root directory (parent of Server/)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Check scheduler1 log for leader status
+if grep -q "I am the leader" "$PROJECT_ROOT/logs/scheduler1.log" 2>/dev/null; then
+    LEADER_NUM="1"
+elif grep -q "I am the leader" "$PROJECT_ROOT/logs/scheduler2.log" 2>/dev/null; then
+    LEADER_NUM="2"
+else
+    echo "❌ No leader found in logs"
+    echo "Checked: $PROJECT_ROOT/logs/scheduler1.log and $PROJECT_ROOT/logs/scheduler2.log"
+    exit 1
 fi
 
-echo "Killing Leader: $CONTAINER"
-docker stop $CONTAINER
+echo "📍 Leader is Scheduler $LEADER_NUM"
 
-echo "Waiting for re-election..."
-sleep 5
-docker-compose logs scheduler | grep "I am the leader" | tail -2
+# Find the PID of the leader scheduler
+LEADER_PID=$(ps aux | grep "node scheduler/index.js" | grep -v grep | awk 'NR=='$LEADER_NUM' {print $2}')
+
+if [ -z "$LEADER_PID" ]; then
+    echo "❌ Could not find leader PID"
+    ps aux | grep "node scheduler/index.js" | grep -v grep
+    exit 1
+fi
+
+echo "💀 Killing leader scheduler (PID: $LEADER_PID)..."
+kill -9 $LEADER_PID
+
+if [ $? -eq 0 ]; then
+    echo "✅ Leader scheduler killed successfully"
+    echo "⏳ Standby should become leader within ~10-15 seconds"
+    exit 0
+else
+    echo "❌ Failed to kill leader"
+    exit 1
+fi
