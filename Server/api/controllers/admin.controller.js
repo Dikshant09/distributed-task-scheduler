@@ -280,6 +280,67 @@ const cleanupDLQ = async (req, res, next) => {
     }
 };
 
+/**
+ * POST /admin/system/reset
+ * Reset the entire system for demos - clears all tasks and events
+ */
+const resetSystem = async (req, res, next) => {
+    try {
+        logger.warn('SYSTEM RESET: Full system reset requested');
+
+        const db = require('../../db');
+        const { redis } = require('../../queue/redis-queue');
+
+        // 1. Clear all tasks from database
+        const deletedTasks = await db.query('DELETE FROM tasks RETURNING id');
+        logger.info(`Deleted ${deletedTasks.rowCount} tasks`);
+
+        // 2. Clear task executions
+        await db.query('DELETE FROM task_executions');
+        logger.info('Cleared task executions');
+
+        // 3. Clear Redis stream (delete and let it be recreated on next dispatch)
+        try {
+            // Delete the entire stream - this clears both stream entries AND pending list
+            await redis.del('task-stream');
+            logger.info('Cleared Redis task stream');
+        } catch (redisErr) {
+            logger.warn('Could not clear Redis stream:', redisErr.message);
+        }
+
+        // 4. Clear events from Redis
+        try {
+            await redis.del('system:events');
+            logger.info('Cleared system events');
+        } catch (redisErr) {
+            logger.warn('Could not clear events:', redisErr.message);
+        }
+
+        // Log the reset event
+        eventLogger.log('SYSTEM_RESET', 'System reset via admin API', {
+            deletedTasks: deletedTasks.rowCount,
+            reason: 'admin_demo_reset'
+        });
+
+        // Emit WebSocket update
+        const { emitInstanceUpdate } = require('../websocket');
+        setTimeout(() => emitInstanceUpdate(), 500);
+
+        res.json({
+            status: 'success',
+            message: 'System reset complete. All tasks and events cleared.',
+            data: {
+                deletedTasks: deletedTasks.rowCount,
+                clearedQueue: true,
+                clearedEvents: true
+            }
+        });
+    } catch (error) {
+        logger.error('System reset failed:', error);
+        next(error);
+    }
+};
+
 module.exports = {
     enableScheduler,
     disableScheduler,
@@ -288,5 +349,6 @@ module.exports = {
     pauseQueue,
     getDLQTasks,
     retryFromDLQ,
-    cleanupDLQ
+    cleanupDLQ,
+    resetSystem
 };

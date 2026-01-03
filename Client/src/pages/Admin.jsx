@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
-import { getWorkers, enableScheduler, disableScheduler } from '../api/api';
+import { getWorkers, enableScheduler, disableScheduler, resetSystem } from '../api/api';
 import EventTimeline from '../components/EventTimeline';
 import Toast from '../components/Toast';
 import './Admin.css';
@@ -9,6 +9,7 @@ function Admin() {
     const [workers, setWorkers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState(null);
+    const [resetting, setResetting] = useState(false);
 
     useEffect(() => {
         // Connect to WebSocket server
@@ -73,6 +74,43 @@ function Admin() {
         }
     };
 
+    const handleResetSystem = async () => {
+        const confirmed = window.confirm(
+            '⚠️ Reset System?\n\n' +
+            'This will delete ALL tasks and events.\n' +
+            'This action cannot be undone.\n\n' +
+            'Are you sure?'
+        );
+
+        if (!confirmed) return;
+
+        setResetting(true);
+        try {
+            const res = await resetSystem();
+            const data = res.data.data;
+            showToast(
+                `System reset! Deleted ${data.deletedTasks} tasks.`,
+                'success'
+            );
+        } catch (err) {
+            // Check for rate limit error
+            if (err.response?.status === 429) {
+                const retryAfter = err.response.data.retryAfter || 60;
+                showToast(
+                    `Rate limited. Please wait ${retryAfter} seconds.`,
+                    'error'
+                );
+            } else {
+                showToast(
+                    `Reset failed: ${err.response?.data?.message || err.message}`,
+                    'error'
+                );
+            }
+        } finally {
+            setResetting(false);
+        }
+    };
+
     if (loading) return <div className="loading">Loading...</div>;
 
     const activeWorkers = workers.filter(w => {
@@ -97,6 +135,22 @@ function Admin() {
                     </button>
                     <button onClick={handleDisableScheduler} className="btn btn-warning">
                         Disable Scheduler
+                    </button>
+                </div>
+            </div>
+
+            <div className="admin-section">
+                <h3>🔄 System Reset</h3>
+                <p className="section-description">
+                    Reset the system for a fresh demo. This clears all tasks and events.
+                </p>
+                <div className="admin-actions">
+                    <button
+                        onClick={handleResetSystem}
+                        className="btn btn-danger"
+                        disabled={resetting}
+                    >
+                        {resetting ? '⏳ Resetting...' : '🗑️ Reset System'}
                     </button>
                 </div>
             </div>

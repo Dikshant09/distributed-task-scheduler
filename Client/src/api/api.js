@@ -26,6 +26,7 @@ export const disableScheduler = () => api.post('/admin/scheduler/disable');
 export const killLeader = () => api.post('/admin/faults/kill-leader');
 export const killWorker = (workerId) => api.post('/admin/faults/kill-worker', { workerId });
 export const pauseQueue = (duration) => api.post('/admin/faults/pause-queue', { duration });
+export const resetSystem = () => api.post('/admin/system/reset');
 
 // Events
 export const getEvents = (params) => {

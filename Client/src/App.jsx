@@ -5,7 +5,9 @@ import Jobs from './pages/Jobs';
 import Schedule from './pages/Schedule';
 import Admin from './pages/Admin';
 import JobDetail from './pages/JobDetail';
+import About from './pages/About';
 import Header from './components/Header';
+import Footer from './components/Footer';
 import './App.css';
 
 // Helper component to handle active state for Jobs tab including sub-routes
@@ -27,6 +29,9 @@ const NavLinks = () => {
       <NavLink to="/admin" className={({ isActive }) => isActive ? 'tab active' : 'tab'}>
         Admin
       </NavLink>
+      <NavLink to="/about" className={({ isActive }) => isActive ? 'tab active' : 'tab'}>
+        About
+      </NavLink>
     </nav>
   );
 };
@@ -44,8 +49,10 @@ function App() {
             <Route path="/schedule" element={<Schedule />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/jobs/:id" element={<JobDetail />} />
+            <Route path="/about" element={<About />} />
           </Routes>
         </main>
+        <Footer />
       </div>
     </BrowserRouter>
   );
