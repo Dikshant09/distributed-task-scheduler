@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { io } from 'socket.io-client';
 import { getWorkers, enableScheduler, disableScheduler } from '../api/api';
 import EventTimeline from '../components/EventTimeline';
 import './Admin.css';
@@ -8,9 +9,33 @@ function Admin() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // Connect to WebSocket server
+        const socket = io('http://localhost:3000', {
+            transports: ['websocket', 'polling']
+        });
+
+        socket.on('connect', () => {
+            console.log('Admin WebSocket connected');
+        });
+
+        // Listen for instance updates (includes workers)
+        socket.on('instances:update', () => {
+            console.log('Received instances:update, refreshing workers');
+            fetchWorkers();
+        });
+
+        // Listen for system updates (includes workers)
+        socket.on('system:update', () => {
+            fetchWorkers();
+        });
+
+        // Initial fetch
         fetchWorkers();
-        const interval = setInterval(fetchWorkers, 2000);
-        return () => clearInterval(interval);
+
+        // Cleanup on unmount
+        return () => {
+            socket.disconnect();
+        };
     }, []);
 
     const fetchWorkers = async () => {
@@ -44,24 +69,34 @@ function Admin() {
 
     if (loading) return <div className="loading">Loading...</div>;
 
+    const activeWorkers = workers.filter(w => {
+        const heartbeatAge = Date.now() - new Date(w.last_heartbeat).getTime();
+        return heartbeatAge <= 30000;
+    });
+
+    const deadWorkers = workers.filter(w => {
+        const heartbeatAge = Date.now() - new Date(w.last_heartbeat).getTime();
+        return heartbeatAge > 30000;
+    });
+
     return (
-        <div className="admin-page">
-            <h2>Administration</h2>
+        <div className="admin">
+            <h2>Admin Panel</h2>
 
             <div className="admin-section">
                 <h3>Scheduler Control</h3>
-                <div className="control-buttons">
-                    <button className="btn-success" onClick={handleEnableScheduler}>
-                        ✅ Enable Scheduler
+                <div className="admin-actions">
+                    <button onClick={handleEnableScheduler} className="btn btn-success">
+                        Enable Scheduler
                     </button>
-                    <button className="btn-danger" onClick={handleDisableScheduler}>
-                        🛑 Disable Scheduler
+                    <button onClick={handleDisableScheduler} className="btn btn-warning">
+                        Disable Scheduler
                     </button>
                 </div>
             </div>
 
             <div className="admin-section">
-                <h3>Workers ({workers.filter(w => w.status === 'ALIVE').length} Active, {workers.filter(w => w.status === 'DEAD').length} Dead)</h3>
+                <h3>Workers ({activeWorkers.length} Active, {deadWorkers.length} Dead)</h3>
                 <table className="workers-table">
                     <thead>
                         <tr>
@@ -71,31 +106,27 @@ function Admin() {
                         </tr>
                     </thead>
                     <tbody>
-                        {workers.map(worker => (
-                            <tr key={worker.worker_id} className={worker.status === 'DEAD' ? 'worker-dead' : ''}>
-                                <td>{worker.worker_id}</td>
-                                <td>
-                                    <span className={`status-badge ${worker.status === 'ALIVE' ? 'status-alive' : 'status-dead'}`}>
-                                        {worker.status === 'ALIVE' ? '✅ Active' : '💀 Dead'}
-                                    </span>
-                                </td>
-                                <td>{new Date(worker.last_heartbeat).toLocaleString()}</td>
-                            </tr>
-                        ))}
+                        {workers.map(worker => {
+                            const heartbeatAge = Date.now() - new Date(worker.last_heartbeat).getTime();
+                            const isAlive = heartbeatAge <= 30000;
+
+                            return (
+                                <tr key={worker.worker_id} className={!isAlive ? 'worker-dead' : ''}>
+                                    <td>{worker.worker_id}</td>
+                                    <td>
+                                        <span className={`status-badge ${isAlive ? 'status-active' : 'status-dead'}`}>
+                                            {isAlive ? '✅ Active' : '💀 Dead'}
+                                        </span>
+                                    </td>
+                                    <td>{new Date(worker.last_heartbeat).toLocaleString()}</td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
-                {workers.length === 0 && (
-                    <p className="no-data">No active workers</p>
-                )}
-                {workers.length > 10 && (
-                    <p style={{ fontStyle: 'italic', color: '#666', marginTop: '10px' }}>
-                        Showing 10 of {workers.length} workers
-                    </p>
-                )}
             </div>
 
-            {/* Event Timeline (All Events) */}
-            <div style={{ marginTop: '30px' }}>
+            <div className="admin-section">
                 <h3>Complete System Timeline</h3>
                 <EventTimeline scope="admin" />
             </div>

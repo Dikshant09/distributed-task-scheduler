@@ -76,6 +76,17 @@ const killLeader = async (req, res, next) => {
         try {
             process.kill(leader.pid, 'SIGTERM');
 
+            // Log admin-initiated kill event
+            eventLogger.log('LEADER_KILLED', `Leader ${leader.id} killed by admin`, {
+                leaderId: leader.id,
+                pid: leader.pid,
+                reason: 'admin_fault_injection'
+            });
+
+            // Emit WebSocket update for immediate topology refresh
+            const { emitInstanceUpdate } = require('../websocket');
+            setTimeout(() => emitInstanceUpdate(), 500);
+
             res.json({
                 status: 'success',
                 message: `Leader ${leader.id} (PID: ${leader.pid}) killed. Standby should become leader within 10-15 seconds.`,
@@ -134,6 +145,29 @@ const killWorker = async (req, res, next) => {
 
         try {
             process.kill(targetWorker.pid, 'SIGTERM');
+
+            // Immediately update worker's last_heartbeat to mark it as dead
+            // This ensures UI shows worker as dead instantly, not after 30s timeout
+            const db = require('../../db');
+            await db.query(
+                `UPDATE workers SET last_heartbeat = NOW() - INTERVAL '1 hour' WHERE worker_id = $1`,
+                [targetWorker.id]
+            );
+
+            // Log admin-initiated kill event
+            eventLogger.log('WORKER_KILLED', `Worker ${targetWorker.id} killed by admin`, {
+                workerId: targetWorker.id,
+                pid: targetWorker.pid,
+                reason: 'admin_fault_injection'
+            });
+
+            // Mark worker as failed to prevent duplicate WORKER_FAILED event
+            const workerMonitor = require('../../scheduler/heartbeat/worker-monitor');
+            workerMonitor.markWorkerAsFailed(targetWorker.id);
+
+            // Emit WebSocket update for immediate topology refresh
+            const { emitInstanceUpdate } = require('../websocket');
+            setTimeout(() => emitInstanceUpdate(), 100); // Reduced delay to 100ms
 
             res.json({
                 status: 'success',

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getSystemStatus, getInstances, killLeader, killWorker, pauseQueue, disableScheduler } from '../api/api';
 import EventTimeline from '../components/EventTimeline';
 import './Dashboard.css';
+import SystemTopology from '../components/SystemTopology';
 
 function Dashboard() {
     const [status, setStatus] = useState(null);
@@ -76,6 +77,9 @@ function Dashboard() {
                     {message.text}
                 </div>
             )}
+
+            {/* System Topology Visualization */}
+            <SystemTopology />
 
             {/* Scheduler Instances */}
             {instances && (

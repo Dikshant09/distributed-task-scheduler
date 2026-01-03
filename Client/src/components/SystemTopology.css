@@ -1,0 +1,194 @@
+.system-topology {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 24px;
+}
+
+.topology-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.system-topology h3 {
+    margin: 0;
+    color: #2d3436;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.connection-status {
+    font-size: 14px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 6px;
+}
+
+.connection-status.connected {
+    color: #00b894;
+    background: #d5f4e6;
+}
+
+.connection-status.disconnected {
+    color: #d63031;
+    background: #ffe0e0;
+}
+
+.topology-diagram {
+    width: 100%;
+    height: auto;
+    max-height: 600px;
+}
+
+/* Smooth transitions for topology changes */
+.worker-node,
+.scheduler-node,
+.redis-node {
+    transition: all 0.5s ease-in-out;
+}
+
+.connection-line {
+    transition: all 0.5s ease-in-out;
+}
+
+/* Connection Lines */
+.connection-line {
+    stroke: #dfe6e9;
+    stroke-width: 2;
+    fill: none;
+}
+
+/* Node Backgrounds */
+.node-bg {
+    stroke: #2d3436;
+    stroke-width: 2;
+}
+
+.leader-bg {
+    fill: #4ecdc4;
+}
+
+.standby-bg {
+    fill: #95a5a6;
+}
+
+.redis-bg {
+    fill: #ff6b6b;
+}
+
+.idle-bg {
+    fill: #96ceb4;
+}
+
+.executing-bg {
+    fill: #fdcb6e;
+    animation: glow 0.5s ease-in-out infinite alternate;
+}
+
+/* Redis Pulsing Animation */
+.redis-bg.pulsing {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+}
+
+/* Worker Glow Animation */
+@keyframes glow {
+    from {
+        filter: drop-shadow(0 0 5px rgba(253, 203, 110, 0.5));
+    }
+
+    to {
+        filter: drop-shadow(0 0 15px rgba(253, 203, 110, 0.9));
+    }
+}
+
+/* Text Styles */
+.node-title {
+    font-size: 14px;
+    font-weight: 600;
+    fill: #2d3436;
+    text-anchor: middle;
+}
+
+.node-id {
+    font-size: 10px;
+    font-family: 'Courier New', monospace;
+    fill: #2d3436;
+    text-anchor: middle;
+}
+
+.node-status {
+    font-size: 11px;
+    fill: #2d3436;
+    text-anchor: middle;
+}
+
+.node-pid {
+    font-size: 10px;
+    fill: #636e72;
+    text-anchor: middle;
+}
+
+.node-queue {
+    font-size: 16px;
+    font-weight: 700;
+    fill: #2d3436;
+    text-anchor: middle;
+}
+
+/* Task Flow Animation */
+.task-flow {
+    opacity: 0.8;
+}
+
+/* Loading State */
+.topology-loading {
+    padding: 40px;
+    text-align: center;
+    color: #636e72;
+    font-size: 14px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .system-topology {
+        padding: 16px;
+    }
+
+    .topology-diagram {
+        max-height: 400px;
+    }
+}
+
+/* Hover Effects */
+.scheduler-node:hover .node-bg,
+.worker-node:hover .node-bg,
+.redis-node:hover .node-bg {
+    stroke-width: 3;
+    cursor: pointer;
+}
+
+/* Status Indicators */
+.scheduler-node.leader .node-bg {
+    stroke: #00b894;
+}
+
+.worker-node.executing .node-bg {
+    stroke: #e17055;
+}
