@@ -26,10 +26,10 @@ function EventTimeline({ scope = 'all', taskId = null }) {
 
             let filteredEvents = allEvents;
             if (scope === 'dashboard') {
-                // Filter to show only system-level events on Dashboard
+                // Filter to show system-level and failure simulation events on Dashboard
                 filteredEvents = allEvents.filter(e =>
                     ['SCHEDULER_ENABLED', 'SCHEDULER_DISABLED', 'LEADER_ELECTED',
-                        'WORKER_FAILED', 'WORKER_RECOVERED'].includes(e.type)
+                        'WORKER_FAILED', 'WORKER_RECOVERED', 'WORKER_KILLED', 'LEADER_KILLED'].includes(e.type)
                 );
             }
             // scope === 'admin' shows all events

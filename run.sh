@@ -13,6 +13,12 @@ fi
 NUM_SCHEDULERS=${NUM_SCHEDULERS:-3}
 NUM_WORKERS=${NUM_WORKERS:-5}
 
+# Enforce maximum limits
+if [ "$NUM_WORKERS" -gt 5 ]; then
+    echo "⚠️  Warning: NUM_WORKERS capped at 5 (you specified $NUM_WORKERS)"
+    NUM_WORKERS=5
+fi
+
 echo "📊 Configuration:"
 echo "  - Schedulers: $NUM_SCHEDULERS"
 echo "  - Workers:    $NUM_WORKERS"

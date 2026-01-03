@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getSystemStatus, getInstances, killLeader, killWorker, pauseQueue, disableScheduler } from '../api/api';
 import EventTimeline from '../components/EventTimeline';
+import Toast from '../components/Toast';
 import './Dashboard.css';
 import SystemTopology from '../components/SystemTopology';
 
@@ -8,7 +9,7 @@ function Dashboard() {
     const [status, setStatus] = useState(null);
     const [instances, setInstances] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [message, setMessage] = useState(null);
+    const [toast, setToast] = useState(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -31,9 +32,9 @@ function Dashboard() {
         return () => clearInterval(interval);
     }, []);
 
-    const showMessage = (msg, type = 'info') => {
-        setMessage({ text: msg, type });
-        setTimeout(() => setMessage(null), 5000);
+
+    const showToast = (message, type = 'info', persistent = false) => {
+        setToast({ message, type, persistent });
     };
 
     const handleFault = async (faultType) => {
@@ -42,25 +43,29 @@ function Dashboard() {
             switch (faultType) {
                 case 'kill-leader':
                     response = await killLeader();
-                    showMessage(response.data.message, 'success');
+                    showToast(response.data.message, 'warning');
                     break;
                 case 'kill-worker':
                     response = await killWorker();
-                    showMessage(response.data.message, 'success');
+                    showToast(response.data.message, 'warning');
                     break;
                 case 'pause-queue':
                     response = await pauseQueue(10000);
-                    showMessage('Queue paused for 10 seconds', 'info');
+                    showToast('Queue paused for 10 seconds', 'info');
                     break;
                 case 'disable-scheduler':
                     response = await disableScheduler();
-                    showMessage('Scheduler disabled', 'warning');
+                    showToast(
+                        '⚠️ Scheduler Disabled - Go to Admin panel to re-enable scheduling',
+                        'warning',
+                        true // persistent - requires manual close
+                    );
                     break;
                 default:
                     break;
             }
         } catch (err) {
-            showMessage(err.response?.data?.message || err.message, 'error');
+            showToast(err.response?.data?.message || err.message, 'error');
         }
     };
 
@@ -71,15 +76,25 @@ function Dashboard() {
         <div className="dashboard">
             <h2>System Health</h2>
 
-            {/* Message Banner */}
-            {message && (
-                <div className={`message-banner message-${message.type}`}>
-                    {message.text}
-                </div>
-            )}
-
             {/* System Topology Visualization */}
             <SystemTopology />
+
+            {/* Failure Simulation - Positioned next to topology for visual context */}
+            <h3>🧪 Failure Simulation</h3>
+            <div className="fault-buttons">
+                <button className="fault-btn danger" onClick={() => handleFault('kill-leader')}>
+                    ❌ Kill Leader
+                </button>
+                <button className="fault-btn danger" onClick={() => handleFault('kill-worker')}>
+                    ❌ Kill Random Worker
+                </button>
+                <button className="fault-btn warning" onClick={() => handleFault('pause-queue')}>
+                    ⏸️ Pause Queue (10s)
+                </button>
+                <button className="fault-btn warning" onClick={() => handleFault('disable-scheduler')}>
+                    🛑 Disable Scheduler
+                </button>
+            </div>
 
             {/* Scheduler Instances */}
             {instances && (
@@ -133,9 +148,6 @@ function Dashboard() {
                 </div>
             )}
 
-            {/* Event Timeline */}
-            <EventTimeline scope="dashboard" />
-
             {/* System Metrics */}
             <h3>System Metrics</h3>
             <div className="metrics-grid">
@@ -184,22 +196,19 @@ function Dashboard() {
                 </div>
             </div>
 
-            {/* Failure Simulation */}
-            <h3>Failure Simulation</h3>
-            <div className="fault-buttons">
-                <button className="fault-btn danger" onClick={() => handleFault('kill-leader')}>
-                    ❌ Kill Leader
-                </button>
-                <button className="fault-btn danger" onClick={() => handleFault('kill-worker')}>
-                    ❌ Kill Random Worker
-                </button>
-                <button className="fault-btn warning" onClick={() => handleFault('pause-queue')}>
-                    ⏸️ Pause Queue (10s)
-                </button>
-                <button className="fault-btn warning" onClick={() => handleFault('disable-scheduler')}>
-                    🛑 Disable Scheduler
-                </button>
-            </div>
+            {/* Event Timeline - Comprehensive activity log */}
+            <h3>📋 Recent System Events</h3>
+            <EventTimeline scope="dashboard" />
+
+            {/* Toast Notifications */}
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    persistent={toast.persistent}
+                    onClose={() => setToast(null)}
+                />
+            )}
         </div>
     );
 }

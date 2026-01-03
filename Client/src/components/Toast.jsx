@@ -1,8 +1,11 @@
 import React, { useEffect } from 'react';
 import './Toast.css';
 
-function Toast({ message, type = 'info', onClose, duration = 3000 }) {
+function Toast({ message, type = 'info', onClose, duration = 3000, persistent = false }) {
     useEffect(() => {
+        // Skip auto-dismiss if persistent is true
+        if (persistent) return;
+
         const timer = setTimeout(() => {
             onClose();
         }, duration);

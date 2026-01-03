@@ -67,7 +67,7 @@ const killLeader = async (req, res, next) => {
         if (!leader) {
             return res.status(404).json({
                 status: 'error',
-                message: 'No leader found in process registry'
+                message: 'No leader to kill - all schedulers are already stopped'
             });
         }
 
@@ -122,7 +122,7 @@ const killWorker = async (req, res, next) => {
         if (workers.length === 0) {
             return res.status(404).json({
                 status: 'error',
-                message: 'No workers found in process registry'
+                message: 'No workers left to kill - all workers are already stopped'
             });
         }
 
