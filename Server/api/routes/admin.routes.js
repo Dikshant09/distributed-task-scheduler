@@ -42,6 +42,7 @@ const chaosRateLimiter = (() => {
 })();
 
 // Scheduler control
+router.get('/scheduler/status', adminController.getSchedulerStatus);
 router.post('/scheduler/enable', adminController.enableScheduler);
 router.post('/scheduler/disable', adminController.disableScheduler);
 
@@ -49,6 +50,7 @@ router.post('/scheduler/disable', adminController.disableScheduler);
 router.post('/faults/kill-leader', chaosRateLimiter, adminController.killLeader);
 router.post('/faults/kill-worker', chaosRateLimiter, adminController.killWorker);
 router.post('/faults/pause-queue', chaosRateLimiter, adminController.pauseQueue);
+router.post('/faults/network-delay', chaosRateLimiter, adminController.networkDelay);
 
 // System reset (for demos)
 router.post('/system/reset', adminController.resetSystem);

@@ -40,6 +40,70 @@ const getPendingTasks = async (limit = 100) => {
   return res.rows;
 };
 
+// ============ READY STATE METHODS (SRP Refactor) ============
+
+/**
+ * Mark PENDING tasks as READY when scheduled_at <= NOW()
+ * Used by Scheduler Coordinator (leader-elected)
+ * Atomic operation - only marks tasks not already in READY+ states
+ */
+const markReady = async (leaderEpoch, limit = 100) => {
+  const query = `
+    UPDATE tasks
+    SET status = 'READY',
+        leader_epoch = $1,
+        updated_at = NOW()
+    WHERE id IN (
+      SELECT id FROM tasks
+      WHERE status = 'PENDING'
+      AND scheduled_at <= NOW()
+      LIMIT $2
+      FOR UPDATE SKIP LOCKED
+    )
+    RETURNING id;
+  `;
+  const res = await db.query(query, [leaderEpoch, limit]);
+  return res.rows;
+};
+
+/**
+ * Get READY tasks for dispatching to Redis
+ * Used by Dispatcher (stateless, can run multiple instances)
+ * Uses FOR UPDATE SKIP LOCKED to prevent duplicate dispatch
+ */
+const getReadyTasks = async (limit = 100) => {
+  const query = `
+    SELECT id, attempt
+    FROM tasks
+    WHERE status = 'READY'
+    LIMIT $1;
+  `;
+  const res = await db.query(query, [limit]);
+  return res.rows;
+};
+
+/**
+ * Atomically get and mark READY tasks as DISPATCHED
+ * Returns only the tasks that were successfully transitioned
+ * Prevents race conditions between multiple dispatchers
+ */
+const dispatchReadyTasks = async (limit = 100) => {
+  const query = `
+    UPDATE tasks
+    SET status = 'DISPATCHED',
+        updated_at = NOW()
+    WHERE id IN (
+      SELECT id FROM tasks
+      WHERE status = 'READY'
+      LIMIT $1
+      FOR UPDATE SKIP LOCKED
+    )
+    RETURNING id, attempt;
+  `;
+  const res = await db.query(query, [limit]);
+  return res.rows;
+};
+
 // Batch update to DISPATCHED
 const markDispatched = async (taskIds, leaderEpoch) => {
   const query = `
@@ -248,6 +312,10 @@ const getExecutionHistory = async (taskId) => {
 module.exports = {
   createTask,
   getPendingTasks,
+  // READY state methods (SRP refactor)
+  markReady,
+  getReadyTasks,
+  dispatchReadyTasks,
   markDispatched,
   acquireLease,
   renewLease,

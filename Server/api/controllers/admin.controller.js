@@ -191,7 +191,14 @@ const killWorker = async (req, res, next) => {
 
 /**
  * POST /admin/faults/pause-queue
- * Simulate Redis queue pause (stops dispatcher temporarily)
+ * Simulate Redis queue pause (pauses dispatcher temporarily)
+ * 
+ * Semantic difference from "Disable Scheduler":
+ * - Disable Scheduler: Stops BOTH coordinator and dispatcher
+ * - Pause Queue: Only pauses dispatcher, coordinator continues marking PENDING → READY
+ *   (tasks accumulate in READY state until resumed)
+ * 
+ * Works with both V1 (monolithic) and V2 (SRP) architectures via scheduler state
  */
 const pauseQueue = async (req, res, next) => {
     try {
@@ -199,16 +206,41 @@ const pauseQueue = async (req, res, next) => {
 
         logger.warn(`FAULT INJECTION: Pausing queue for ${duration}ms`);
 
-        dispatcher.stop();
+        // Use queuePaused state (only affects dispatcher, not coordinator)
+        await schedulerState.setQueuePaused(true);
 
-        setTimeout(() => {
+        eventLogger.log('QUEUE_PAUSED', `Queue paused for ${duration}ms via fault injection`, {
+            duration,
+            reason: 'admin_fault_injection'
+        });
+
+        // Also stop local dispatcher if running in V1 mode (same process)
+        try {
+            dispatcher.stop();
+        } catch (e) {
+            // Ignore - dispatcher may not be running in this process (V2 mode)
+        }
+
+        setTimeout(async () => {
             logger.info('Resuming queue after fault injection');
-            dispatcher.start();
+            await schedulerState.setQueuePaused(false);
+
+            // Also start local dispatcher if running in V1 mode
+            try {
+                dispatcher.start();
+            } catch (e) {
+                // Ignore - dispatcher may not be running in this process (V2 mode)
+            }
+
+            eventLogger.log('QUEUE_RESUMED', 'Queue resumed after fault injection', {
+                duration,
+                reason: 'auto_resume'
+            });
         }, duration);
 
         res.json({
             status: 'success',
-            message: `Queue paused for ${duration}ms`
+            message: `Queue paused for ${duration}ms (tasks accumulate in READY state)`
         });
     } catch (error) {
         next(error);
@@ -341,12 +373,83 @@ const resetSystem = async (req, res, next) => {
     }
 };
 
+/**
+ * POST /admin/faults/network-delay
+ * Simulate network delay by pausing the queue temporarily
+ * This causes tasks to accumulate in READY state
+ */
+const networkDelay = async (req, res, next) => {
+    try {
+        const { duration = 5000 } = req.body;
+
+        logger.warn(`FAULT INJECTION: Simulating network delay for ${duration}ms`);
+
+        // Use queuePaused state to simulate network delay
+        await schedulerState.setQueuePaused(true);
+
+        eventLogger.log('NETWORK_DELAY_START', `Network delay simulation started (${duration}ms)`, {
+            duration,
+            reason: 'admin_fault_injection'
+        });
+
+        setTimeout(async () => {
+            logger.info('Network delay simulation ended');
+            await schedulerState.setQueuePaused(false);
+
+            eventLogger.log('NETWORK_DELAY_END', 'Network delay simulation ended', {
+                duration,
+                reason: 'auto_resume'
+            });
+        }, duration);
+
+        res.json({
+            status: 'success',
+            message: `Network delay simulated for ${duration}ms`,
+            data: {
+                duration,
+                effect: 'Tasks accumulate in READY state until delay ends'
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * GET /admin/scheduler/status
+ * Get current scheduler status (enabled/disabled, queue paused)
+ */
+const getSchedulerStatus = async (req, res, next) => {
+    try {
+        const isEnabled = await schedulerState.isEnabled();
+        const isQueuePaused = await schedulerState.isQueuePaused();
+        const leader = await processRegistry.getLeader();
+
+        res.json({
+            status: 'success',
+            data: {
+                enabled: isEnabled,
+                queuePaused: isQueuePaused,
+                leader: leader ? {
+                    id: leader.id,
+                    pid: leader.pid,
+                    since: leader.startedAt
+                } : null
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     enableScheduler,
     disableScheduler,
     killLeader,
     killWorker,
     pauseQueue,
+    networkDelay,
+    getSchedulerStatus,
     getDLQTasks,
     retryFromDLQ,
     cleanupDLQ,
