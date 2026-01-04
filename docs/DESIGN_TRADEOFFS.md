@@ -816,7 +816,108 @@ if (current > 100) throw new Error('Rate limited');
 
 ---
 
+## Single Point of Failure (SPOF) Analysis
+
+> **Key Interview Insight**: "Redis and Postgres are single instances in the demo, but not single points of failure in the architecture. Redis is disposable, and Postgres can be made HA without changing any application logic."
+
+### Are Redis and PostgreSQL SPOFs?
+
+**Short, Confident Answer:**
+
+> "Yes, in this demo Redis and Postgres are single points of failure by design. In production, both are deployed as replicated, highly available systems. For this project, I intentionally kept them single-instance to reduce cost and complexity, while keeping the architecture compatible with HA setups."
+
+That framing is important: **intentional trade-off, not ignorance.**
+
+---
+
+### PostgreSQL – Source of Truth
+
+| Question | Answer |
+|----------|--------|
+| Is it a SPOF? | Logically yes, physically no (in production) |
+| Production solution | Primary + Read Replicas with automatic failover |
+| Examples | AWS RDS Multi-AZ, Azure Flexible Server HA, GCP Cloud SQL HA, Patroni + etcd |
+
+**Why the design already supports HA:**
+- Writes are limited and controlled (only scheduler leader writes)
+- Leader election already exists (etcd)
+- Read-heavy paths (dashboard, workers) can hit replicas
+- No cross-DB transactions
+
+**Key Point:**
+> "The system assumes logical single-writer semantics, not physical single-node DB."
+
+---
+
+### Redis – Task Queue
+
+| Question | Answer |
+|----------|--------|
+| Is it a SPOF? | Only if you deploy it incorrectly |
+| Production solutions | Redis Sentinel, Redis Cluster, Managed Redis (ElastiCache / Azure Cache) |
+
+**Why failure is survivable in this design:**
+
+> **Redis is NOT the source of truth**
+
+If Redis goes down:
+1. Tasks still exist in Postgres
+2. Dispatcher can re-push READY tasks
+3. Workers re-consume
+4. At-least-once semantics handle duplicates
+
+**So Redis failure = temporary delay, not data loss.**
+
+This is a very strong design decision.
+
+---
+
+### Failure Scenarios Summary
+
+| Component | What Happens | Data Loss? | Recovery |
+|-----------|--------------|------------|----------|
+| **Redis crashes** | Dispatcher pauses, no tasks dispatched | ❌ No | Self-heals when Redis returns |
+| **PostgreSQL crashes** | Entire system pauses (correct behavior) | ❌ No | Resumes cleanly when DB returns |
+| **Etcd crashes** | Leader election fails, current leader continues | ❌ No | New elections when Etcd returns |
+
+**Design Philosophy:**
+> "Fail-fast and pause is better than corrupting state."
+
+---
+
+### Why This Is Acceptable for Public Demo
+
+> "For the public demo, we accept single-instance Redis and DB because:
+> - Sessions are ephemeral
+> - No persistence guarantee is required
+> - Failure is actually educational — users can see recovery in action"
+
+That's a **feature**, not a bug.
+
+---
+
+### Extra Credit: Show You Thought Ahead
+
+> "If I wanted to eliminate Redis entirely, I could run workers directly off the DB using `SELECT … FOR UPDATE SKIP LOCKED`, but I kept Redis to better visualize queueing and backpressure."
+
+That answer signals:
+- You know DB-only schedulers
+- You chose Redis intentionally
+
+---
+
+### What NOT to Say
+
+| ❌ Wrong | ✅ Correct |
+|----------|-----------|
+| "Redis/Postgres won't fail" | "Intentional trade-off" |
+| "We assume infra handles it" | "Production-compatible design" |
+| "This is just a demo so it doesn't matter" | "Failure-safe by construction" |
+
+---
+
 ## Summary: Key Talking Points
+
 
 ### The One-Liner
 > "I built a distributed task scheduler visualizer that demonstrates leader election, lease-based execution, and fault tolerance—with a real-time UI that shows failures and recovery live."
