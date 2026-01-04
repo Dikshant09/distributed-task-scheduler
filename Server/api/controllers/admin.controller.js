@@ -442,11 +442,124 @@ const getSchedulerStatus = async (req, res, next) => {
     }
 };
 
+/**
+ * POST /admin/faults/kill-worker-mid-task
+ * FAST DEMO: Kill worker mid-task and show recovery within 10 seconds
+ * 
+ * Flow:
+ * 1. Create task (1s delay)
+ * 2. Wait 1s for worker to pick up
+ * 3. Kill worker
+ * 4. Immediately expire lease
+ * 5. Another worker picks up and completes (~1s)
+ * Total: ~3-5 seconds
+ */
+const killWorkerMidTask = async (req, res, next) => {
+    try {
+        const tasksRepo = require('../../db/repositories/tasks.repo');
+        const { generateId } = require('../../common/utils/uuid');
+        const db = require('../../db');
+
+        logger.warn('FAULT INJECTION: Kill worker mid-task fast demo');
+
+        // 1. Create a fast task (1 second delay)
+        const taskId = generateId();
+        await tasksRepo.createTask({
+            id: taskId,
+            type: 'HTTP',
+            payload: { url: 'https://httpbin.org/delay/1' },
+            scheduledAt: new Date(),
+            idempotencyKey: `demo-kill-${Date.now()}`
+        });
+
+        eventLogger.log('DEMO_TASK_CREATED', `Fast demo task ${taskId.substring(0, 8)} created`, {
+            taskId
+        });
+
+        // 2. Wait for worker to pick it up (1.5s should be enough)
+        setTimeout(async () => {
+            try {
+                const task = await tasksRepo.getTaskById(taskId);
+
+                if (task && task.worker_id && task.status === 'RUNNING') {
+                    const workerId = task.worker_id;
+
+                    // 3. Kill the worker
+                    logger.warn(`DEMO: Killing worker ${workerId} mid-task`);
+                    const workers = await processRegistry.getWorkers();
+                    const targetWorker = workers.find(w => w.id === workerId);
+
+                    if (targetWorker) {
+                        process.kill(targetWorker.pid, 'SIGTERM');
+
+                        eventLogger.log('WORKER_KILLED_MID_TASK', `Worker ${workerId} killed mid-task`, {
+                            workerId,
+                            taskId
+                        });
+
+                        // 4. FAST: Immediately expire the lease and reset to PENDING
+                        await db.query(`
+                            UPDATE tasks 
+                            SET status = 'PENDING',
+                                assigned_worker_id = NULL,
+                                lease_expiry = NULL,
+                                updated_at = NOW()
+                            WHERE id = $1
+                        `, [taskId]);
+
+                        eventLogger.log('TASK_LEASE_EXPIRED', `Task ${taskId.substring(0, 8)} lease expired (fast)`, {
+                            taskId,
+                            previousWorker: workerId
+                        });
+
+                        // 5. Mark READY so another worker picks it up immediately
+                        await db.query(`
+                            UPDATE tasks 
+                            SET status = 'READY', updated_at = NOW()
+                            WHERE id = $1
+                        `, [taskId]);
+
+                        eventLogger.log('TASK_READY', `Task ${taskId.substring(0, 8)} marked READY for recovery`, {
+                            taskId
+                        });
+                    }
+                } else if (task && task.status === 'SUCCESS') {
+                    logger.info('Task completed before we could kill worker');
+                } else {
+                    logger.info('Task not yet running, will retry');
+                }
+            } catch (err) {
+                logger.error('Demo error', err);
+            }
+        }, 1500);
+
+        res.json({
+            status: 'success',
+            message: 'Fast demo started. Worker will be killed in ~1.5s, task recovered immediately.',
+            data: {
+                taskId,
+                expectedFlow: [
+                    '1. Task created → PENDING → READY → DISPATCHED',
+                    '2. Worker picks up → RUNNING (1.5s)',
+                    '3. Worker killed',
+                    '4. Lease expired immediately',
+                    '5. Task reset → READY',
+                    '6. Another worker picks up → SUCCESS (~1s)',
+                ],
+                totalTime: '~5 seconds'
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     enableScheduler,
     disableScheduler,
     killLeader,
     killWorker,
+    killWorkerMidTask,
     pauseQueue,
     networkDelay,
     getSchedulerStatus,

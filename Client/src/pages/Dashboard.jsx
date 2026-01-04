@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getSystemStatus, getInstances, killLeader, killWorker, pauseQueue, disableScheduler } from '../api/api';
+import { getSystemStatus, getInstances, killLeader, killWorker, killWorkerMidTask, pauseQueue, networkDelay, disableScheduler } from '../api/api';
 import EventTimeline from '../components/EventTimeline';
 import Toast from '../components/Toast';
 import './Dashboard.css';
@@ -53,6 +53,10 @@ function Dashboard() {
                     response = await pauseQueue(10000);
                     showToast('Queue paused for 10 seconds', 'info');
                     break;
+                case 'kill-worker-mid-task':
+                    response = await killWorkerMidTask(3000);
+                    showToast('Long task created. Worker will be killed in 3s. Watch recovery!', 'warning');
+                    break;
                 case 'disable-scheduler':
                     response = await disableScheduler();
                     showToast(
@@ -60,6 +64,10 @@ function Dashboard() {
                         'warning',
                         true // persistent - requires manual close
                     );
+                    break;
+                case 'network-delay':
+                    response = await networkDelay(5000);
+                    showToast('Network delay simulated for 5 seconds (tasks accumulate in READY)', 'info');
                     break;
                 default:
                     break;
@@ -88,8 +96,14 @@ function Dashboard() {
                 <button className="fault-btn danger" onClick={() => handleFault('kill-worker')}>
                     ❌ Kill Random Worker
                 </button>
+                <button className="fault-btn danger" onClick={() => handleFault('kill-worker-mid-task')}>
+                    💥 Kill Worker Mid-Task
+                </button>
                 <button className="fault-btn warning" onClick={() => handleFault('pause-queue')}>
                     ⏸️ Pause Queue (10s)
+                </button>
+                <button className="fault-btn warning" onClick={() => handleFault('network-delay')}>
+                    🌐 Network Delay (5s)
                 </button>
                 <button className="fault-btn warning" onClick={() => handleFault('disable-scheduler')}>
                     🛑 Disable Scheduler

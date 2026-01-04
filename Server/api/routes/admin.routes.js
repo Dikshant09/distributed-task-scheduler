@@ -49,6 +49,7 @@ router.post('/scheduler/disable', adminController.disableScheduler);
 // Fault injection (rate-limited to prevent abuse)
 router.post('/faults/kill-leader', chaosRateLimiter, adminController.killLeader);
 router.post('/faults/kill-worker', chaosRateLimiter, adminController.killWorker);
+router.post('/faults/kill-worker-mid-task', chaosRateLimiter, adminController.killWorkerMidTask);
 router.post('/faults/pause-queue', chaosRateLimiter, adminController.pauseQueue);
 router.post('/faults/network-delay', chaosRateLimiter, adminController.networkDelay);
 

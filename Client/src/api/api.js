@@ -23,9 +23,12 @@ export const getWorkers = () => api.get('/workers');
 // Admin
 export const enableScheduler = () => api.post('/admin/scheduler/enable');
 export const disableScheduler = () => api.post('/admin/scheduler/disable');
+export const getSchedulerStatus = () => api.get('/admin/scheduler/status');
 export const killLeader = () => api.post('/admin/faults/kill-leader');
 export const killWorker = (workerId) => api.post('/admin/faults/kill-worker', { workerId });
+export const killWorkerMidTask = (killAfterMs) => api.post('/admin/faults/kill-worker-mid-task', { killAfterMs });
 export const pauseQueue = (duration) => api.post('/admin/faults/pause-queue', { duration });
+export const networkDelay = (duration) => api.post('/admin/faults/network-delay', { duration });
 export const resetSystem = () => api.post('/admin/system/reset');
 
 // Events

@@ -129,32 +129,41 @@ class RecoveryService {
 
     /**
      * Lease Reaper:
-     * Find RUNNING tasks with expired leases and reset to PENDING
+     * Find RUNNING tasks with expired leases and mark as FAILED
      * This handles worker crashes mid-execution
+     * 
+     * Expected flow:
+     * 1. Worker dies (no heartbeat)
+     * 2. Lease expires
+     * 3. Task marked FAILED (this function)
+     * 4. Retry scheduled (next_retry_at set)
+     * 5. Retry loop picks it up and resets to PENDING
+     * 6. Another worker picks it up
      */
     async _reapExpiredLeases() {
         try {
+            // Find and mark as FAILED (not directly PENDING) to follow proper flow
             const query = `
                 UPDATE tasks
-                SET status = 'PENDING',
-                    assigned_worker_id = NULL,
-                    lease_expiry = NULL,
+                SET status = 'FAILED',
+                    next_retry_at = NOW() + INTERVAL '5 seconds',
                     updated_at = NOW()
                 WHERE status = 'RUNNING'
                 AND lease_expiry < NOW()
-                RETURNING id, assigned_worker_id;
+                RETURNING id, assigned_worker_id, attempt;
             `;
 
             const result = await db.query(query);
             const reaped = result.rows;
 
             if (reaped.length > 0) {
-                logger.warn(`Reaped ${reaped.length} tasks with expired leases`);
+                logger.warn(`Reaped ${reaped.length} tasks with expired leases (marked FAILED)`);
 
                 reaped.forEach(task => {
-                    eventLogger.log('TASK_LEASE_EXPIRED', `Task ${task.id.substring(0, 8)} lease expired, resetting`, {
+                    eventLogger.log('TASK_LEASE_EXPIRED', `Task ${task.id.substring(0, 8)} lease expired, marked FAILED for retry`, {
                         taskId: task.id,
-                        previousWorker: task.assigned_worker_id
+                        previousWorker: task.assigned_worker_id,
+                        attempt: task.attempt
                     });
                 });
             }
