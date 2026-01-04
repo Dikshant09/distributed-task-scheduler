@@ -497,6 +497,20 @@ const killWorkerMidTask = async (req, res, next) => {
                             taskId
                         });
 
+                        // 3.5. Clean up stale Redis pending entries from the killed worker
+                        const { redis } = require('../../queue/redis-queue');
+                        try {
+                            // Get pending entries for this worker and ACK them
+                            const pending = await redis.xpending('task-stream', 'workers-group', '-', '+', 10, workerId);
+                            for (const entry of pending) {
+                                const messageId = entry[0];
+                                await redis.xack('task-stream', 'workers-group', messageId);
+                                logger.info(`Cleaned up stale Redis message ${messageId} from killed worker`);
+                            }
+                        } catch (err) {
+                            logger.warn('Could not clean Redis pending entries', err.message);
+                        }
+
                         // 4. FAST: Immediately expire the lease and reset to PENDING
                         await db.query(`
                             UPDATE tasks 
