@@ -28,6 +28,7 @@ In a distributed system with multiple scheduler instances:
 - ✅ **Horizontal Scaling** - Run multiple schedulers for redundancy
 - ✅ **Zero Downtime** - System continues operating during failover
 - ✅ **Automatic Recovery** - No manual intervention needed
+- ✅ **Event-Based Detection** - Uses `campaign.on('elected')` / `campaign.on('lost')` for reliable leadership changes
 
 ### Technology Stack
 
@@ -58,14 +59,29 @@ In a distributed system with multiple scheduler instances:
         │ (Heartbeat)                       │
         │                                   │
 ┌───────▼────────┐                  ┌───────▼────────┐
-│  Scheduler 1   │                  │  Scheduler 2   │
+│  Coordinator 1 │                  │  Coordinator 2 │
 │   (LEADER)     │                  │   (STANDBY)    │
 │                │                  │                │
-│ ✓ Dispatcher   │                  │ ✗ Waiting...   │
-│ ✓ Monitor      │                  │                │
-│ ✓ DLQ Handler  │                  │                │
+│ ✓ Mark READY   │                  │ ✗ Waiting...   │
+│   (SRP Only)   │                  │                │
 └────────────────┘                  └────────────────┘
 ```
+
+### V2 SRP Architecture (Decoupled Design)
+
+```
+┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+│     API      │    │ Coordinator  │    │ Coordinator  │
+│  (Port 3000) │    │   (Leader)   │    │  (Standby)   │
+└──────────────┘    └──────────────┘    └──────────────┘
+                           │
+┌──────────────┐    ┌──────▼───────┐    ┌──────────────┐
+│  Dispatcher  │    │    Etcd      │    │   Recovery   │
+│  (Stateless) │    │ (Port 2379)  │    │  (Stateless) │
+└──────────────┘    └──────────────┘    └──────────────┘
+```
+
+**Key Point:** Only the Scheduler Coordinator is leader-elected. Dispatcher, Recovery, and Worker Monitor are **stateless**.
 
 ### Multi-Process Architecture
 
@@ -102,15 +118,28 @@ async start() {
 }
 
 async _campaign() {
-    const campaign = this.election.campaign(this.id);
+    // Event-based pattern - returns campaign object with event emitters
+    this.campaign = this.election.campaign(this.electionKey);
     
-    campaign.on('elected', () => {
+    this.campaign.on('elected', () => {
         this.isLeader = true;
-        logger.info(`I am the leader (${this.id})`);
+        logger.info(`I am the leader (${this.electionKey})`);
         this.emit('elected');
+    });
+    
+    this.campaign.on('lost', () => {
+        this.isLeader = false;
+        logger.info(`Lost leadership (${this.electionKey})`);
+        this.emit('demoted');
+        // Re-campaign after losing
+        if (this.campaigning) {
+            setTimeout(() => this._campaign(), 1000);
+        }
     });
 }
 ```
+
+> **IMPORTANT**: The event-based pattern (`campaign.on('elected')` / `campaign.on('lost')`) is critical for reliable leadership detection. DO NOT use the blocking `await election.campaign()` approach, which fails to detect when another node becomes leader.
 
 **What Happens:**
 1. Scheduler connects to Etcd
@@ -138,10 +167,10 @@ leaderElection.on('elected', () => {
 });
 ```
 
-**Services Started:**
-- **Dispatcher** - Polls database for pending tasks, dispatches to Redis queue
-- **Worker Monitor** - Detects dead workers, reassigns their tasks
-- **DLQ Handler** - Processes failed tasks in Dead Letter Queue
+**Service Started (V2 SRP):**
+- **Schedule Planner** - Marks PENDING → READY when `scheduled_at <= NOW()`
+
+**Note**: In V2 SRP architecture, the Coordinator **only** marks tasks READY. Dispatching is handled by the separate Dispatcher service.
 
 ### Step 3: Heartbeat Mechanism
 
@@ -200,17 +229,21 @@ campaign.on('elected', () => {
 
 ```
 Server/
-├── scheduler/
-│   ├── leader-election/
-│   │   ├── etcd-client.js       # Etcd connection
-│   │   └── leader-election.js   # Election logic
-│   ├── task-dispatcher/
-│   │   └── dispatcher.js        # Task dispatching (leader only)
-│   ├── heartbeat/
-│   │   └── worker-monitor.js    # Worker monitoring (leader only)
-│   ├── dead-letter/
-│   │   └── dlq-handler.js       # DLQ processing (leader only)
-│   └── index.js                 # Scheduler entry point
+├── common/
+│   └── leader-election/
+│       ├── etcd-client.js         # Etcd connection
+│       └── leader-election.js     # Event-based election logic
+├── services/
+│   ├── scheduler-coordinator/
+│   │   └── index.js               # Coordinator (leader-elected)
+│   ├── dispatcher/
+│   │   └── index.js               # Dispatcher (stateless)
+│   ├── recovery/
+│   │   └── index.js               # Recovery service (stateless)
+│   └── worker-monitor/
+│       └── index.js               # Worker monitor (stateless)
+└── worker/
+    └── index.js                   # Task executor
 ```
 
 ### Key Files
@@ -281,13 +314,13 @@ leaderElection.on('elected', () => {
 });
 
 // When leadership lost, stop services
-leaderElection.on('lost', () => {
+leaderElection.on('demoted', () => {
     logger.warn('Lost leadership. Stopping services...');
-    dispatcher.stop();
-    workerMonitor.stop();
-    dlqHandler.stop();
+    this._stopSchedulingLoop();
 });
 ```
+
+> **V2 SRP Note**: In the decoupled architecture, the coordinator's `elected` handler only starts the scheduling loop (PENDING → READY). Dispatching is handled by the separate Dispatcher service.
 
 ---
 

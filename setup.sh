@@ -2,7 +2,7 @@
 
 set -e
 
-echo "🚀 Setting up Distributed Task Scheduler..."
+echo "🚀 Setting up Distributed Task Scheduler (V2 - SRP Architecture)..."
 
 # Check if Homebrew is installed
 if ! command -v brew &> /dev/null; then
@@ -53,6 +53,16 @@ cd Client
 npm install
 cd ..
 
+# Create logs directory
+mkdir -p logs
+
+echo ""
 echo "✅ Setup complete!"
 echo ""
-echo "To start the project, run: ./run.sh"
+echo "📊 V2 SRP Architecture Services:"
+echo "  - Scheduler Coordinator (leader-elected)"
+echo "  - Dispatcher (stateless)"
+echo "  - Recovery Service (stateless)"
+echo "  - Worker Monitor (stateless)"
+echo ""
+echo "To start the V2 project, run: ./run_v2.sh"

@@ -19,11 +19,56 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Debug Scheduler",
+            "name": "Debug Scheduler Coordinator",
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}/Server/scheduler/index.js",
+            "program": "${workspaceFolder}/Server/services/scheduler-coordinator/index.js",
+            "cwd": "${workspaceFolder}/Server",
+            "env": {
+                "NODE_ENV": "development"
+            },
+            "console": "integratedTerminal",
+            "outputCapture": "std"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Dispatcher",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/Server/services/dispatcher/index.js",
+            "cwd": "${workspaceFolder}/Server",
+            "env": {
+                "NODE_ENV": "development"
+            },
+            "console": "integratedTerminal",
+            "outputCapture": "std"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Recovery Service",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/Server/services/recovery/index.js",
+            "cwd": "${workspaceFolder}/Server",
+            "env": {
+                "NODE_ENV": "development"
+            },
+            "console": "integratedTerminal",
+            "outputCapture": "std"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Worker Monitor",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/Server/services/worker-monitor/index.js",
             "cwd": "${workspaceFolder}/Server",
             "env": {
                 "NODE_ENV": "development"
@@ -64,26 +109,6 @@
             "skipFiles": [
                 "<node_internals>/**"
             ]
-        },
-        {
-            "type": "node",
-            "request": "attach",
-            "name": "Attach to Scheduler",
-            "port": 9230,
-            "restart": true,
-            "skipFiles": [
-                "<node_internals>/**"
-            ]
-        },
-        {
-            "type": "node",
-            "request": "attach",
-            "name": "Attach to Worker",
-            "port": 9231,
-            "restart": true,
-            "skipFiles": [
-                "<node_internals>/**"
-            ]
         }
     ],
     "compounds": [
@@ -91,7 +116,10 @@
             "name": "Debug All Backend Services",
             "configurations": [
                 "Debug API Server",
-                "Debug Scheduler",
+                "Debug Scheduler Coordinator",
+                "Debug Dispatcher",
+                "Debug Recovery Service",
+                "Debug Worker Monitor",
                 "Debug Worker"
             ],
             "presentation": {
@@ -104,7 +132,8 @@
             "name": "Debug Full Stack",
             "configurations": [
                 "Debug API Server",
-                "Debug Scheduler",
+                "Debug Scheduler Coordinator",
+                "Debug Dispatcher",
                 "Debug Worker",
                 "Debug Client (Chrome)"
             ],

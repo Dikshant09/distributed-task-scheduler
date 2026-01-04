@@ -1,5 +1,5 @@
 const logger = require('../../common/logger');
-const leaderElection = require('../../scheduler/leader-election/leader-election');
+const LeaderElection = require('../../common/leader-election/leader-election');
 const tasksRepo = require('../../db/repositories/tasks.repo');
 const processRegistry = require('../../common/process-registry');
 const eventLogger = require('../../common/event-logger');
@@ -19,32 +19,34 @@ class SchedulerCoordinator {
     constructor() {
         this.isRunning = false;
         this.scheduleInterval = null;
+        this.coordinatorId = `coordinator-${process.pid}-${Date.now().toString(36)}`;
+        this.leaderElection = new LeaderElection(this.coordinatorId);
     }
 
     async start() {
         logger.info('Starting Scheduler Coordinator Service...');
 
-        const coordinatorId = leaderElection.getLeaderId();
-        await processRegistry.registerScheduler(coordinatorId, process.pid, false);
+        await processRegistry.registerScheduler(this.coordinatorId, process.pid, false);
 
-        await leaderElection.start();
-
-        leaderElection.on('elected', async () => {
+        this.leaderElection.on('elected', async () => {
             logger.info('Became Leader. Starting scheduling loop...');
-            await processRegistry.updateSchedulerLeader(coordinatorId, true);
+            await processRegistry.updateSchedulerLeader(this.coordinatorId, true);
             this._startSchedulingLoop();
         });
 
-        leaderElection.on('lost', async () => {
+        this.leaderElection.on('demoted', async () => {
             logger.info('Lost Leadership. Stopping scheduling loop...');
-            await processRegistry.updateSchedulerLeader(coordinatorId, false);
+            await processRegistry.updateSchedulerLeader(this.coordinatorId, false);
             this._stopSchedulingLoop();
         });
+
+        await this.leaderElection.startElection();
 
         // Graceful Shutdown
         const shutdown = async () => {
             logger.info('Scheduler Coordinator shutting down...');
-            await processRegistry.unregisterScheduler(coordinatorId);
+            await this.leaderElection.resignLeadership();
+            await processRegistry.unregisterScheduler(this.coordinatorId);
             this._stopSchedulingLoop();
             process.exit(0);
         };
@@ -84,11 +86,10 @@ class SchedulerCoordinator {
             return;
         }
 
-        if (!leaderElection.isLeader) return;
+        if (!this.leaderElection.getIsLeader()) return;
 
         try {
-            const leaderEpoch = await leaderElection.getLeaderEpoch();
-            const readyTasks = await tasksRepo.markReady(leaderEpoch, 100);
+            const readyTasks = await tasksRepo.markReady(this.coordinatorId, 100);
 
             if (readyTasks.length > 0) {
                 logger.info(`Marked ${readyTasks.length} tasks as READY`);

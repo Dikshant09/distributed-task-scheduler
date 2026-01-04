@@ -44,23 +44,33 @@ class ProcessRegistry {
 
     /**
      * Update scheduler leader status
+     * Uses transaction for atomic update to prevent race conditions
      */
     async updateSchedulerLeader(id, isLeader) {
+        const client = await db.pool.connect();
         try {
-            // Set all schedulers to non-leader first
+            await client.query('BEGIN');
+
+            // Set all schedulers to non-leader first (within transaction)
             if (isLeader) {
-                await db.query(`UPDATE process_instances SET is_leader = FALSE WHERE type = 'scheduler'`);
+                await client.query(`UPDATE process_instances SET is_leader = FALSE WHERE type = 'scheduler'`);
             }
 
-            await db.query(`
+            // Set this scheduler's leader status
+            await client.query(`
                 UPDATE process_instances 
                 SET is_leader = $1, last_updated = NOW()
                 WHERE id = $2 AND type = 'scheduler'
             `, [isLeader, id]);
 
+            await client.query('COMMIT');
+
             logger.info(`Updated scheduler ${id} leader status: ${isLeader}`);
         } catch (err) {
+            await client.query('ROLLBACK');
             logger.error('Failed to update scheduler leader status', err);
+        } finally {
+            client.release();
         }
     }
 

@@ -1,29 +1,21 @@
 const logger = require('../../common/logger');
-const dispatcher = require('../../scheduler/task-dispatcher/dispatcher');
-const workerMonitor = require('../../scheduler/heartbeat/worker-monitor');
-const dlqHandler = require('../../scheduler/dead-letter/dlq-handler');
 const processRegistry = require('../../common/process-registry');
 const schedulerState = require('../../common/scheduler-state');
 const eventLogger = require('../../common/event-logger');
 
 /**
  * POST /admin/scheduler/enable
- * Enable the scheduler (start dispatcher, worker monitor, DLQ handler)
+ * Enable the scheduler (V2: just sets the enabled flag, services check it)
  */
 const enableScheduler = async (req, res, next) => {
     try {
         logger.info('Enabling scheduler via admin API');
-
         await schedulerState.setEnabled(true);
-        dispatcher.start();
-        workerMonitor.start();
-        dlqHandler.start();
-
         eventLogger.log('SCHEDULER_ENABLED', 'Scheduler enabled via admin API');
 
         res.json({
             status: 'success',
-            message: 'Scheduler enabled'
+            message: 'Scheduler enabled. Coordinator and Dispatcher will resume processing.'
         });
     } catch (error) {
         next(error);
@@ -32,22 +24,17 @@ const enableScheduler = async (req, res, next) => {
 
 /**
  * POST /admin/scheduler/disable
- * Disable the scheduler (stop dispatcher, worker monitor, DLQ handler)
+ * Disable the scheduler (V2: just sets the enabled flag, services check it)
  */
 const disableScheduler = async (req, res, next) => {
     try {
         logger.info('Disabling scheduler via admin API');
-
         await schedulerState.setEnabled(false);
-        dispatcher.stop();
-        workerMonitor.stop();
-        dlqHandler.stop();
-
         eventLogger.log('SCHEDULER_DISABLED', 'Scheduler disabled via admin API');
 
         res.json({
             status: 'success',
-            message: 'Scheduler disabled'
+            message: 'Scheduler disabled. Coordinator and Dispatcher will pause processing.'
         });
     } catch (error) {
         next(error);
@@ -161,9 +148,7 @@ const killWorker = async (req, res, next) => {
                 reason: 'admin_fault_injection'
             });
 
-            // Mark worker as failed to prevent duplicate WORKER_FAILED event
-            const workerMonitor = require('../../scheduler/heartbeat/worker-monitor');
-            workerMonitor.markWorkerAsFailed(targetWorker.id);
+            // Note: Worker failure will be detected by Worker Monitor service
 
             // Emit WebSocket update for immediate topology refresh
             const { emitInstanceUpdate } = require('../websocket');
@@ -272,9 +257,11 @@ const getDLQTasks = async (req, res, next) => {
 const retryFromDLQ = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const dlqHandler = require('../../scheduler/dead-letter/dlq-handler');
+        const tasksRepo = require('../../db/repositories/tasks.repo');
 
-        const success = await dlqHandler.retryFromDLQ(id);
+        // Reset task status to PENDING for retry
+        await tasksRepo.resetFromDLQ(id);
+        const success = true;
 
         if (success) {
             res.json({
@@ -299,9 +286,10 @@ const retryFromDLQ = async (req, res, next) => {
 const cleanupDLQ = async (req, res, next) => {
     try {
         const { retentionDays = 30 } = req.body;
-        const dlqHandler = require('../../scheduler/dead-letter/dlq-handler');
+        const tasksRepo = require('../../db/repositories/tasks.repo');
 
-        await dlqHandler.cleanupOldTasks(retentionDays);
+        // Delete old DLQ tasks directly
+        await tasksRepo.deleteDLQTasksOlderThan(retentionDays);
 
         res.json({
             status: 'success',

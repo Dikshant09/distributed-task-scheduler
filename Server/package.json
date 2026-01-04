@@ -5,15 +5,14 @@
   "main": "api/server.js",
   "scripts": {
     "start:api": "node api/server.js",
-    "start:scheduler": "node scheduler/index.js",
     "start:coordinator": "node services/scheduler-coordinator/index.js",
     "start:dispatcher": "node services/dispatcher/index.js",
     "start:recovery": "node services/recovery/index.js",
     "start:monitor": "node services/worker-monitor/index.js",
     "start:worker": "node worker/index.js",
     "dev:api": "nodemon api/server.js",
-    "dev:scheduler": "nodemon scheduler/index.js",
     "dev:coordinator": "nodemon services/scheduler-coordinator/index.js",
+    "dev:dispatcher": "nodemon services/dispatcher/index.js",
     "dev:worker": "nodemon worker/index.js",
     "test": "jest",
     "lint": "eslint ."

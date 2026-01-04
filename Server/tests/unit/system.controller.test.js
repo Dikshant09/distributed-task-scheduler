@@ -1,9 +1,9 @@
 const systemController = require('../../api/controllers/system.controller');
-const etcdClient = require('../../scheduler/leader-election/etcd-client');
+const etcdClient = require('../../common/leader-election/etcd-client');
 const workersRepo = require('../../db/repositories/workers.repo');
 const db = require('../../db');
 
-jest.mock('../../scheduler/leader-election/etcd-client');
+jest.mock('../../common/leader-election/etcd-client');
 jest.mock('../../db/repositories/workers.repo');
 jest.mock('../../db');
 

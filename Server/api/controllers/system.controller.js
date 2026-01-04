@@ -1,18 +1,9 @@
 const logger = require('../../common/logger');
-const etcdClient = require('../../scheduler/leader-election/etcd-client');
+const etcdClient = require('../../common/leader-election/etcd-client');
 const redisQueue = require('../../queue/redis-queue');
 const workersRepo = require('../../db/repositories/workers.repo');
 const db = require('../../db');
 const schedulerState = require('../../common/scheduler-state');
-
-// Import dispatcher to check if scheduler is enabled
-let dispatcher = null;
-try {
-    dispatcher = require('../../scheduler/task-dispatcher/dispatcher');
-} catch (err) {
-    // API server might not have access to dispatcher (runs separately)
-    logger.debug('Dispatcher not available in API process');
-}
 
 /**
  * GET /system/status
