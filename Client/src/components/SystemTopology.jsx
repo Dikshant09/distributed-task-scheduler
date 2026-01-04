@@ -257,10 +257,10 @@ function SystemTopology() {
             {/* Title/Legend - Top right corner */}
             <g className="legend" transform="translate(980, 20)">
                 <rect width="200" height="140" rx="8" fill="rgba(15,15,26,0.95)" stroke="var(--glass-border)" strokeWidth="2" />
-                <text x="100" y="28" className="node-title" fill="var(--text-primary)" fontSize="14">SRP Architecture</text>
-                <text x="20" y="55" fill="#22c55e" textAnchor="start" fontSize="13">⚡ Leader-elected</text>
-                <text x="20" y="80" fill="#f97316" textAnchor="start" fontSize="13">📤 Stateless</text>
-                <text x="20" y="105" fill="#8b5cf6" textAnchor="start" fontSize="13">🔄 Background</text>
+                <text x="100" y="30" textAnchor="middle" fill="#fff" fontSize="14" fontWeight="bold">Legend</text>
+                <text x="20" y="58" fill="#22c55e" textAnchor="start" fontSize="13">⚡ Leader-elected</text>
+                <text x="20" y="83" fill="#f97316" textAnchor="start" fontSize="13">📤 Stateless</text>
+                <text x="20" y="108" fill="#8b5cf6" textAnchor="start" fontSize="13">🔄 Background</text>
                 <text x="20" y="130" fill="#3b82f6" textAnchor="start" fontSize="13">👷 Executor</text>
             </g>
 
