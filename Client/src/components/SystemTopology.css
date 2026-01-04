@@ -43,10 +43,70 @@
     border: 1px solid var(--accent-danger);
 }
 
+/* Topology Controls */
+.topology-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.view-toggle {
+    padding: var(--spacing-xs) var(--spacing-md);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.view-toggle:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.view-toggle.active {
+    background: var(--accent-primary);
+    color: white;
+    border-color: var(--accent-primary);
+}
+
 .topology-diagram {
     width: 100%;
     height: auto;
     max-height: 600px;
+}
+
+.topology-diagram.detailed-view {
+    max-height: 750px;
+}
+
+/* New SRP Node Backgrounds */
+.dispatcher-bg {
+    fill: #f97316;
+    filter: drop-shadow(0 0 10px rgba(249, 115, 22, 0.5));
+}
+
+.recovery-bg {
+    fill: #8b5cf6;
+    filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.5));
+}
+
+.monitor-bg {
+    fill: #ec4899;
+    filter: drop-shadow(0 0 10px rgba(236, 72, 153, 0.5));
+}
+
+.db-bg {
+    fill: #3b82f6;
+    filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.5));
+}
+
+.etcd-bg {
+    fill: #14b8a6;
+    filter: drop-shadow(0 0 10px rgba(20, 184, 166, 0.5));
 }
 
 /* Smooth transitions for topology changes */
