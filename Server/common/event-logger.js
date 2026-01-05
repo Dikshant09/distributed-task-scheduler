@@ -7,14 +7,22 @@ const Redis = require('ioredis');
  */
 class EventLogger {
     constructor() {
-        this.redis = new Redis({
-            host: 'localhost',
-            port: 6379,
-            retryStrategy: (times) => {
-                const delay = Math.min(times * 50, 2000);
-                return delay;
-            }
-        });
+        // Support both REDIS_URL (production) and default (development)
+        this.redis = process.env.REDIS_URL
+            ? new Redis(process.env.REDIS_URL, {
+                retryStrategy: (times) => {
+                    const delay = Math.min(times * 50, 2000);
+                    return delay;
+                }
+            })
+            : new Redis({
+                host: process.env.REDIS_HOST || 'localhost',
+                port: parseInt(process.env.REDIS_PORT) || 6379,
+                retryStrategy: (times) => {
+                    const delay = Math.min(times * 50, 2000);
+                    return delay;
+                }
+            });
         this.eventsKey = 'system:events';
         this.maxEvents = 200; // Keep more events in Redis
     }

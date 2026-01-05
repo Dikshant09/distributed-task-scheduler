@@ -21,10 +21,13 @@ class WorkerMonitor {
     constructor() {
         this.isRunning = false;
         this.checkInterval = null;
-        this.redis = new Redis({
-            host: 'localhost',
-            port: 6379
-        });
+        // Support both REDIS_URL (production) and default (development)
+        this.redis = process.env.REDIS_URL
+            ? new Redis(process.env.REDIS_URL)
+            : new Redis({
+                host: process.env.REDIS_HOST || 'localhost',
+                port: parseInt(process.env.REDIS_PORT) || 6379
+            });
     }
 
     async start() {

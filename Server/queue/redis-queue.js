@@ -2,10 +2,13 @@ const Redis = require('ioredis');
 const config = require('../common/config');
 const logger = require('../common/logger');
 
-const redis = new Redis({
-    host: config.redis.host,
-    port: config.redis.port
-});
+// Support both REDIS_URL (production) and individual env vars (development)
+const redis = process.env.REDIS_URL
+    ? new Redis(process.env.REDIS_URL)
+    : new Redis({
+        host: config.redis.host,
+        port: config.redis.port
+    });
 
 const STREAM_NAME = 'task-stream';
 const CONSUMER_GROUP = 'workers-group';
