@@ -1,28 +1,33 @@
 /**
  * Database initialization for production
- * Clears stale data from previous sessions on startup
- * This ensures a clean slate when Docker containers restart
+ * FULL RESET: Clears all data on Docker restart for demo purposes
+ * The 3 schedulers and 5 workers will auto-register as fresh instances
  */
 const db = require('../db');
 const logger = require('../common/logger');
 
 const initDatabase = async () => {
     try {
-        logger.info('Initializing database - clearing stale data...');
+        logger.info('Initializing database - FULL RESET...');
 
         // Clear stale process instances from previous container runs
         await db.query('DELETE FROM process_instances');
-        logger.info('Cleared process_instances table');
+        logger.info('Cleared process_instances');
 
-        // Clear stale tasks (optional - uncomment for full reset on restart)
-        // await db.query('DELETE FROM tasks');
-        // await db.query('DELETE FROM task_executions');
-        // logger.info('Cleared tasks and executions');
+        // Clear all tasks and executions for fresh demo
+        await db.query('DELETE FROM task_executions');
+        await db.query('DELETE FROM tasks');
+        logger.info('Cleared tasks and task_executions');
 
-        // Clear Redis events (optional)
-        // Redis data persists in volume, but events will be fresh
+        // Clear Redis events
+        const Redis = require('ioredis');
+        const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+        await redis.del('system:events');
+        await redis.del('task-stream');
+        await redis.quit();
+        logger.info('Cleared Redis events and task stream');
 
-        logger.info('Database initialization complete');
+        logger.info('Database initialization complete - system reset');
     } catch (err) {
         // Table may not exist on first run - that's OK
         if (err.code === '42P01') {
@@ -34,3 +39,4 @@ const initDatabase = async () => {
 };
 
 module.exports = initDatabase;
+
