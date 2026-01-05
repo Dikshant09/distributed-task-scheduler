@@ -126,6 +126,42 @@ services:
       - app-network
     # Scale with: docker compose up --scale worker=5
 
+  dispatcher:
+    build: ./Server
+    command: node services/dispatcher/index.js
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://scheduler:${DB_PASSWORD:-changeme}@postgres:5432/task_scheduler
+      REDIS_URL: redis://redis:6379
+    mem_limit: 64m
+    cpus: 0.1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  recovery:
+    build: ./Server
+    command: node services/recovery/index.js
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://scheduler:${DB_PASSWORD:-changeme}@postgres:5432/task_scheduler
+      REDIS_URL: redis://redis:6379
+    mem_limit: 64m
+    cpus: 0.1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
+
   cleanup:
     build: ./Server
     command: node scripts/session-cleanup.js
