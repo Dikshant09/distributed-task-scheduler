@@ -144,11 +144,11 @@ function SystemTopology() {
                             transform={`translate(${x}, 80)`}
                         >
                             <rect width="200" height="80" rx="8" className={`node-bg ${isLeader ? 'leader-bg' : 'standby-bg'}`} />
-                            <text x="100" y="25" className="node-title">
+                            <text x="100" y="35" className="node-title">
                                 {isLeader ? '👑 Leader' : '⏸️ Standby'} Scheduler
                             </text>
-                            <text x="100" y="45" className="node-id">{scheduler.id.substring(0, 16)}</text>
-                            <text x="100" y="60" className="node-status">PID: {scheduler.pid}</text>
+                            <text x="100" y="55" className="node-id">{scheduler.id.substring(0, 16)}</text>
+
                         </g>
                     );
                 })}
@@ -181,14 +181,14 @@ function SystemTopology() {
                                 rx="8"
                                 className={`node-bg ${isExecuting ? 'executing-bg' : 'idle-bg'}`}
                             />
-                            <text x="100" y="25" className="node-title">
+                            <text x="100" y="32" className="node-title">
                                 {isExecuting ? '⚙️' : '🟢'} Worker {index + 1}
                             </text>
-                            <text x="100" y="45" className="node-id">{worker.id.substring(0, 16)}</text>
-                            <text x="100" y="65" className="node-status">
+                            <text x="100" y="52" className="node-id">{worker.id.substring(0, 16)}</text>
+                            <text x="100" y="72" className="node-status">
                                 {isExecuting ? `Task: ${worker.currentTaskId?.substring(0, 8)}...` : 'Idle'}
                             </text>
-                            <text x="100" y="85" className="node-pid">PID: {worker.pid}</text>
+
                         </g>
                     );
                 })}
@@ -288,13 +288,13 @@ function SystemTopology() {
                     return (
                         <g key={scheduler.id} transform={`translate(${x}, 80)`}>
                             <rect width="140" height="100" rx="8" className={`node-bg ${isLeader ? 'leader-bg' : 'standby-bg'}`} />
-                            <text x="70" y="22" className="node-title">
+                            <text x="70" y="25" className="node-title">
                                 {isLeader ? '👑' : '⏸️'} Coordinator
                             </text>
-                            <text x="70" y="42" className="node-status">{isLeader ? 'LEADER' : 'Standby'}</text>
-                            <text x="70" y="60" className="node-id">{scheduler.id.substring(0, 12)}</text>
-                            <text x="70" y="78" className="node-pid">PID: {scheduler.pid}</text>
-                            <text x="70" y="92" className="node-status" fontSize="9">PENDING→READY</text>
+                            <text x="70" y="45" className="node-status">{isLeader ? 'LEADER' : 'Standby'}</text>
+                            <text x="70" y="62" className="node-id">{scheduler.id.substring(0, 12)}</text>
+
+                            <text x="70" y="80" className="node-status" fontSize="9">PENDING→READY</text>
                         </g>
                     );
                 })}
@@ -377,14 +377,14 @@ function SystemTopology() {
                                         rx="8"
                                         className={`node-bg ${isExecuting ? 'executing-bg' : 'idle-bg'}`}
                                     />
-                                    <text x="70" y="20" className="node-title">
+                                    <text x="70" y="25" className="node-title">
                                         {isExecuting ? '⚙️' : '👷'} Worker {index + 1}
                                     </text>
-                                    <text x="70" y="38" className="node-id">{worker.id.substring(0, 12)}</text>
-                                    <text x="70" y="54" className="node-status">
+                                    <text x="70" y="45" className="node-id">{worker.id.substring(0, 12)}</text>
+                                    <text x="70" y="62" className="node-status">
                                         {isExecuting ? 'Executing' : 'Idle'}
                                     </text>
-                                    <text x="70" y="72" className="node-pid">PID: {worker.pid}</text>
+
                                 </g>
                             );
                         })}
