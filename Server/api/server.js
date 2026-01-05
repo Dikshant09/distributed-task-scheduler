@@ -6,6 +6,7 @@ const logger = require('../common/logger');
 const requestLogger = require('./middlewares/request-id');
 const errorHandler = require('./middlewares/error-handler');
 const { initializeWebSocket } = require('./websocket');
+const initDatabase = require('../scripts/init-db');
 
 // Routes
 const jobRoutes = require('./routes/jobs.routes');
@@ -41,9 +42,12 @@ app.use(errorHandler);
 
 // Start Server
 if (require.main === module) {
-    httpServer.listen(config.server.port, () => {
-        logger.info(`API Service running on port ${config.server.port}`);
-        logger.info('WebSocket server ready for connections');
+    // Initialize database (clear stale data from previous runs)
+    initDatabase().then(() => {
+        httpServer.listen(config.server.port, () => {
+            logger.info(`API Service running on port ${config.server.port}`);
+            logger.info('WebSocket server ready for connections');
+        });
     });
 }
 
