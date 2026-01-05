@@ -16,7 +16,10 @@ function Admin() {
         const WS_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
         // Connect to WebSocket server
-        const socket = io(WS_URL, {
+        // When using /api as base URL, Socket.IO will try /api/socket.io/ which nginx doesn't proxy
+        // So we need to use the root path and let nginx proxy /socket.io/ directly
+        const socket = io(window.location.origin, {
+            path: '/socket.io/',
             transports: ['websocket', 'polling']
         });
 
