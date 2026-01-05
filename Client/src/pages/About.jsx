@@ -62,7 +62,7 @@ const About = () => {
                 <div className="author-card">
                     <div className="author-avatar">
                         <img
-                            src="https://avatars.githubusercontent.com/u/your-github-id"
+                            src="http://avatars.githubusercontent.com/u/78208876?v=4"
                             alt="Profile"
                             onError={(e) => {
                                 e.target.onerror = null;
@@ -105,7 +105,7 @@ const About = () => {
                 </div>
             </section>
 
-            <section className="about-section">
+            {/* <section className="about-section">
                 <h2>🚀 Try It Out</h2>
                 <div className="cta-buttons">
                     <Link to="/" className="cta-button primary">
@@ -120,7 +120,7 @@ const About = () => {
                         View Source Code
                     </a>
                 </div>
-            </section>
+            </section> */}
         </div>
     );
 };
