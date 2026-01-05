@@ -8,6 +8,7 @@ function JobDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [task, setTask] = useState(null);
+    const [executions, setExecutions] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -20,6 +21,7 @@ function JobDetail() {
         try {
             const res = await getTaskById(id);
             setTask(res.data.data.task);
+            setExecutions(res.data.data.executions || []);
             setLoading(false);
         } catch (err) {
             console.error('Failed to fetch task', err);
@@ -87,6 +89,43 @@ function JobDetail() {
             <div className="payload-section">
                 <h3>Payload</h3>
                 <pre>{JSON.stringify(task.payload, null, 2)}</pre>
+            </div>
+
+            {/* Execution Output Section */}
+            <div className="executions-section">
+                <h3>Execution History</h3>
+                {executions.length === 0 ? (
+                    <div className="no-executions">No executions yet</div>
+                ) : (
+                    <div className="executions-list">
+                        {executions.map((exec, index) => (
+                            <div key={index} className="execution-item">
+                                <div className="execution-header">
+                                    <span className="attempt-badge">Attempt #{exec.attempt}</span>
+                                    <span className={`status-badge ${getStatusColor(exec.status)}`}>{exec.status}</span>
+                                    <span className="execution-time">
+                                        {new Date(exec.started_at).toLocaleString()}
+                                        {exec.duration_ms ? ` (${exec.duration_ms}ms)` : ''}
+                                    </span>
+                                </div>
+
+                                {exec.output && (
+                                    <div className="execution-output">
+                                        <div className="output-label">Output:</div>
+                                        <pre>{typeof exec.output === 'object' ? JSON.stringify(exec.output, null, 2) : exec.output}</pre>
+                                    </div>
+                                )}
+
+                                {exec.error && (
+                                    <div className="execution-error">
+                                        <div className="output-label">Error:</div>
+                                        <pre>{typeof exec.error === 'object' ? JSON.stringify(exec.error, null, 2) : exec.error}</pre>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Event Timeline (Job Specific) */}

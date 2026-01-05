@@ -437,7 +437,7 @@ function SystemTopology() {
             <path d="M 520 470 L 170 470 L 170 360" className="connection-line" strokeDasharray="5,5" />
 
             {/* Animated Task Flows */}
-            {leader && workers.length > 0 && queueDepth > 0 && (() => {
+            {leader && workers.length > 0 && (() => {
                 const leaderX = 220 + schedulers.findIndex(s => s.isLeader) * 160 + 70;
                 // Calculate worker positions for animation
                 const maxDetailedWorkers = 4;
@@ -450,45 +450,76 @@ function SystemTopology() {
 
                 return (
                     <>
-                        {/* Coordinator → Dispatcher - follows same path as connection line */}
-                        <circle r="5" className="task-flow" fill="#4ecdc4">
-                            <animateMotion
-                                dur="1.5s"
-                                repeatCount="indefinite"
-                                path={`M ${leaderX} 180 L ${leaderX} 200 L 560 200 L 560 230`}
-                            />
-                        </circle>
-
-                        {/* Dispatcher → Redis */}
-                        <circle r="5" className="task-flow" fill="#f97316">
-                            <animateMotion
-                                dur="1s"
-                                repeatCount="indefinite"
-                                path="M 640 270 L 700 270"
-                            />
-                        </circle>
-
-                        {/* Redis → Executing Workers - ONE BALL PER EXECUTING WORKER */}
-                        {workers.slice(0, displayCount).map((worker, index) => {
-                            if (worker.status !== 'executing') return null;
-                            const targetWorkerX = detailWorkerStartX + (index * detailWorkerSpacing) + 70;
-
-                            return (
-                                <circle
-                                    key={`flow-redis-worker-${worker.id}`}
-                                    r="6"
-                                    className="task-flow"
-                                    fill="#fbbf24" // Yellow for executing
-                                >
+                        {/* Coordinator → Dispatcher & Dispatcher → Redis (Only when queueing) */}
+                        {queueDepth > 0 && (
+                            <>
+                                <circle r="5" className="task-flow" fill="#4ecdc4">
                                     <animateMotion
-                                        dur="1.2s"
+                                        dur="1.5s"
                                         repeatCount="indefinite"
-                                        path={`M 780 310 L ${targetWorkerX} 380`}
-                                        begin={`${index * 0.2}s`} // Stagger animations slightly
+                                        path={`M ${leaderX} 180 L ${leaderX} 200 L 560 200 L 560 230`}
                                     />
                                 </circle>
-                            );
-                        })}
+
+                                <circle r="5" className="task-flow" fill="#f97316">
+                                    <animateMotion
+                                        dur="1s"
+                                        repeatCount="indefinite"
+                                        path="M 640 270 L 700 270"
+                                    />
+                                </circle>
+                            </>
+                        )}
+
+                        {/* Redis → Executing Workers - ONE BALL PER EXECUTING WORKER (Always show if executing) */}
+                        {(() => {
+                            const executingWorkers = workers.slice(0, displayCount).filter(w => w.status === 'executing');
+
+                            // 1. Show YELLOW balls for all executing workers
+                            const yellowBalls = workers.slice(0, displayCount).map((worker, index) => {
+                                if (worker.status !== 'executing') return null;
+                                const targetWorkerX = detailWorkerStartX + (index * detailWorkerSpacing) + 70;
+                                return (
+                                    <circle
+                                        key={`flow-redis-worker-${worker.id}`}
+                                        r="6"
+                                        className="task-flow"
+                                        fill="#fbbf24" // Yellow for executing
+                                    >
+                                        <animateMotion
+                                            dur="1.2s"
+                                            repeatCount="indefinite"
+                                            path={`M 780 310 L ${targetWorkerX} 380`}
+                                            begin={`${index * 0.2}s`}
+                                        />
+                                    </circle>
+                                );
+                            });
+
+                            // 2. Fallback: Show BLUE ball to first worker if Queue > 0 but NO executing workers
+                            // This visualizes "Work is waiting to be picked up"
+                            if (executingWorkers.length === 0 && queueDepth > 0 && workers.length > 0) {
+                                const targetWorkerX = detailWorkerStartX + 70; // Target first worker
+                                return (
+                                    <>
+                                        {/* Blue ball to first worker */}
+                                        <circle
+                                            r="6"
+                                            className="task-flow"
+                                            fill="#3b82f6" // Blue for flow
+                                        >
+                                            <animateMotion
+                                                dur="1.2s"
+                                                repeatCount="indefinite"
+                                                path={`M 780 310 L ${targetWorkerX} 380`}
+                                            />
+                                        </circle>
+                                    </>
+                                );
+                            }
+
+                            return yellowBalls;
+                        })()}
                     </>
                 );
             })()}

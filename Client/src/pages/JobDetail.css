@@ -112,6 +112,116 @@
     color: var(--text-secondary);
 }
 
+/* Execution History Styles */
+.executions-section {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(12px);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: var(--glass-shadow);
+}
+
+.executions-section h3 {
+    margin: 0 0 16px 0;
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+}
+
+.no-executions {
+    color: var(--text-tertiary);
+    font-style: italic;
+    padding: 12px;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+}
+
+.executions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.execution-item {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.2s ease;
+}
+
+.execution-item:hover {
+    background: rgba(0, 0, 0, 0.3);
+    border-color: var(--accent-primary);
+}
+
+.execution-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.attempt-badge {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.execution-time {
+    margin-left: auto;
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+}
+
+.execution-output,
+.execution-error {
+    margin-top: 12px;
+    background: #0f0f1a;
+    border-radius: 6px;
+    border: 1px solid var(--glass-border);
+    overflow: hidden;
+}
+
+.execution-error {
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.output-label {
+    padding: 8px 12px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-tertiary);
+    border-bottom: 1px solid var(--glass-border);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.execution-error .output-label {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.execution-output pre,
+.execution-error pre {
+    margin: 0;
+    padding: 12px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.9rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    color: #e2e8f0;
+}
+
+.execution-error pre {
+    color: #fca5a5;
+}
+
 .execution-history {
     background: var(--glass-bg);
     backdrop-filter: blur(20px);
@@ -166,6 +276,7 @@
     font-size: 0.875rem;
     color: var(--text-secondary);
     line-height: 1.6;
+    color: var(--text-secondary);
 }
 
 .history-details div {
@@ -192,6 +303,7 @@
 
     .job-info,
     .payload-section,
+    .executions-section,
     .execution-history {
         padding: var(--spacing-md);
     }
