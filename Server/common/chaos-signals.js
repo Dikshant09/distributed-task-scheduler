@@ -2,7 +2,7 @@
  * Chaos Signals - Simple Redis pub/sub for cross-container chaos testing
  * 
  * Usage:
- *   Publisher (API):     chaosSignals.killScheduler('coordinator-1-xxx')
+ *   Publisher (API):     chaosSignals.killScheduler('scheduler-abc1')
  *   Subscriber (Sched):  chaosSignals.onKillScheduler(myId, () => process.exit(1))
  */
 const Redis = require('ioredis');

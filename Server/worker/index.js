@@ -8,8 +8,28 @@ const { generateId } = require('../common/utils/uuid');
 const { truncateOutput } = require('../common/utils/truncate-output');
 const processRegistry = require('../common/process-registry');
 const eventLogger = require('../common/event-logger');
+const os = require('os');
 
-const WORKER_ID = `worker-${generateId().substring(0, 8)}`;
+/**
+ * Generate a clean, readable worker ID
+ * - In Docker: uses container hostname (e.g., "worker-abc123")
+ * - Locally: uses "worker-" + short random suffix
+ */
+function generateWorkerId() {
+    const hostname = process.env.HOSTNAME || os.hostname();
+
+    // Docker containers typically have short alphanumeric hostnames
+    // If hostname looks like a Docker container ID (12 chars hex), use first 6
+    if (/^[a-f0-9]{12}$/i.test(hostname)) {
+        return `worker-${hostname.substring(0, 6)}`;
+    }
+
+    // For local dev or non-Docker, use a simple short ID
+    const shortId = Math.random().toString(36).substring(2, 6);
+    return `worker-${shortId}`;
+}
+
+const WORKER_ID = generateWorkerId();
 const heartbeat = new HeartbeatSender(WORKER_ID);
 
 const processTask = async (msg) => {

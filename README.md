@@ -24,7 +24,7 @@ The system follows the **Single Responsibility Principle (SRP)** by splitting th
 ```
 ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
 │  API Server  │───▶│   Postgres   │───▶│ Scheduler    │
-│  (Ingestion) │    │ Source Truth │    │ Coordinator  │
+│  (Ingestion) │    │ Source Truth │    │  Scheduler   │
 └──────────────┘    └──────────────┘    └──────────────┘
        │                                        │
        ▼                                        ▼
@@ -42,7 +42,7 @@ The system follows the **Single Responsibility Principle (SRP)** by splitting th
 
 **Components:**
 - **API Server** - Accepts jobs, writes to PostgreSQL, serves WebSocket for real-time UI
-- **Scheduler Coordinator** - Handles leader election via Etcd
+- **Scheduler** - Handles leader election via Etcd (only 1 leader active)
 - **Dispatcher** - Stateless service that pushes pending tasks from Postgres to Redis
 - **Worker** - Consumes tasks from Redis, executes them, and reports status
 - **Recovery** - Monitors worker heartbeats and reclaims stalled tasks (Lease mechanism)
@@ -53,7 +53,7 @@ The system follows the **Single Responsibility Principle (SRP)** by splitting th
 ```
 User → API → PostgreSQL → Dispatcher → Redis → Worker → PostgreSQL
                 ↑                                    ↓
-         Scheduler Coordinator              Heartbeat Monitor
+         Scheduler (Leader)                Heartbeat Monitor
          (Leader Election)                  (Recovery Service)
 ```
 

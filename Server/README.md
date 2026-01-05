@@ -73,7 +73,7 @@ Server/
 
 ---
 
-### 2. Scheduler Coordinator (`services/scheduler-coordinator/`)
+### 2. Scheduler (`services/scheduler-coordinator/`)
 
 **Purpose:** Leader election and coordination
 

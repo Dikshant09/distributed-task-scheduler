@@ -47,8 +47,8 @@ const getPendingTasks = async (limit = 100) => {
  * Used by Scheduler Coordinator (leader-elected)
  * Atomic operation - only marks tasks not already in READY+ states
  */
-const markReady = async (coordinatorId, limit = 100) => {
-  // Note: coordinatorId is kept for logging/debugging but not stored in DB
+const markReady = async (schedulerId, limit = 100) => {
+  // Note: schedulerId is kept for logging/debugging but not stored in DB
   // leader_epoch column was intended for split-brain protection but requires proper epoch implementation
   const query = `
     UPDATE tasks
