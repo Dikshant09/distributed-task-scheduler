@@ -113,8 +113,9 @@ const executeTask = async (task) => {
 
     try {
         let result;
+        const taskType = (task.type || '').toUpperCase();
 
-        switch (task.type) {
+        switch (taskType) {
             case 'HTTP':
                 result = await executeHttpTask(task.payload);
                 break;
