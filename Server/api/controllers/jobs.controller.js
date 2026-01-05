@@ -3,6 +3,7 @@ const { generateId } = require('../../common/utils/uuid');
 const { now } = require('../../common/utils/time');
 const { NotFoundError } = require('../../common/errors/custom-errors');
 const db = require('../../db');
+const eventLogger = require('../../common/event-logger');
 
 const createJob = async (req, res, next) => {
     try {
@@ -19,6 +20,12 @@ const createJob = async (req, res, next) => {
         };
 
         const createdTask = await tasksRepo.createTask(task);
+
+        // Log event
+        eventLogger.log('TASK_CREATED', `Task ${createdTask.id.substring(0, 8)} created (${type})`, {
+            taskId: createdTask.id,
+            type
+        });
 
         res.status(201).json({
             status: 'success',

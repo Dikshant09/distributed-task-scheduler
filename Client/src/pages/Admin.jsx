@@ -1,15 +1,44 @@
 import React, { useState, useEffect } from 'react';
-import { getWorkers, enableScheduler, disableScheduler } from '../api/api';
+import { io } from 'socket.io-client';
+import { getWorkers, enableScheduler, disableScheduler, resetSystem } from '../api/api';
+import EventTimeline from '../components/EventTimeline';
+import Toast from '../components/Toast';
 import './Admin.css';
 
 function Admin() {
     const [workers, setWorkers] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [toast, setToast] = useState(null);
+    const [resetting, setResetting] = useState(false);
 
     useEffect(() => {
+        // Connect to WebSocket server
+        const socket = io('http://localhost:3000', {
+            transports: ['websocket', 'polling']
+        });
+
+        socket.on('connect', () => {
+            console.log('Admin WebSocket connected');
+        });
+
+        // Listen for instance updates (includes workers)
+        socket.on('instances:update', () => {
+            console.log('Received instances:update, refreshing workers');
+            fetchWorkers();
+        });
+
+        // Listen for system updates (includes workers)
+        socket.on('system:update', () => {
+            fetchWorkers();
+        });
+
+        // Initial fetch
         fetchWorkers();
-        const interval = setInterval(fetchWorkers, 2000);
-        return () => clearInterval(interval);
+
+        // Cleanup on unmount
+        return () => {
+            socket.disconnect();
+        };
     }, []);
 
     const fetchWorkers = async () => {
@@ -23,44 +52,111 @@ function Admin() {
         }
     };
 
+    const showToast = (message, type = 'info') => {
+        setToast({ message, type });
+    };
+
     const handleEnableScheduler = async () => {
         try {
             await enableScheduler();
-            alert('Scheduler enabled');
+            showToast('Scheduler enabled successfully', 'success');
         } catch (err) {
-            alert(`Failed to enable scheduler: ${err.message}`);
+            showToast(`Failed to enable scheduler: ${err.message}`, 'error');
         }
     };
 
     const handleDisableScheduler = async () => {
         try {
             await disableScheduler();
-            alert('Scheduler disabled');
+            showToast('Scheduler disabled successfully', 'warning');
         } catch (err) {
-            alert(`Failed to disable scheduler: ${err.message}`);
+            showToast(`Failed to disable scheduler: ${err.message}`, 'error');
+        }
+    };
+
+    const handleResetSystem = async () => {
+        const confirmed = window.confirm(
+            '⚠️ Reset System?\n\n' +
+            'This will delete ALL tasks and events.\n' +
+            'This action cannot be undone.\n\n' +
+            'Are you sure?'
+        );
+
+        if (!confirmed) return;
+
+        setResetting(true);
+        try {
+            const res = await resetSystem();
+            const data = res.data.data;
+            showToast(
+                `System reset! Deleted ${data.deletedTasks} tasks.`,
+                'success'
+            );
+        } catch (err) {
+            // Check for rate limit error
+            if (err.response?.status === 429) {
+                const retryAfter = err.response.data.retryAfter || 60;
+                showToast(
+                    `Rate limited. Please wait ${retryAfter} seconds.`,
+                    'error'
+                );
+            } else {
+                showToast(
+                    `Reset failed: ${err.response?.data?.message || err.message}`,
+                    'error'
+                );
+            }
+        } finally {
+            setResetting(false);
         }
     };
 
     if (loading) return <div className="loading">Loading...</div>;
 
+    const activeWorkers = workers.filter(w => {
+        const heartbeatAge = Date.now() - new Date(w.last_heartbeat).getTime();
+        return heartbeatAge <= 30000;
+    });
+
+    const deadWorkers = workers.filter(w => {
+        const heartbeatAge = Date.now() - new Date(w.last_heartbeat).getTime();
+        return heartbeatAge > 30000;
+    });
+
     return (
-        <div className="admin-page">
-            <h2>Administration</h2>
+        <div className="admin">
+            <h2>Admin Panel</h2>
 
             <div className="admin-section">
                 <h3>Scheduler Control</h3>
-                <div className="control-buttons">
-                    <button className="btn-success" onClick={handleEnableScheduler}>
-                        ✅ Enable Scheduler
+                <div className="admin-actions">
+                    <button onClick={handleEnableScheduler} className="btn btn-success">
+                        Enable Scheduler
                     </button>
-                    <button className="btn-danger" onClick={handleDisableScheduler}>
-                        🛑 Disable Scheduler
+                    <button onClick={handleDisableScheduler} className="btn btn-warning">
+                        Disable Scheduler
                     </button>
                 </div>
             </div>
 
             <div className="admin-section">
-                <h3>Active Workers ({workers.length})</h3>
+                <h3>🔄 System Reset</h3>
+                <p className="section-description">
+                    Reset the system for a fresh demo. This clears all tasks and events.
+                </p>
+                <div className="admin-actions">
+                    <button
+                        onClick={handleResetSystem}
+                        className="btn btn-danger"
+                        disabled={resetting}
+                    >
+                        {resetting ? '⏳ Resetting...' : '🗑️ Reset System'}
+                    </button>
+                </div>
+            </div>
+
+            <div className="admin-section">
+                <h3>Workers ({activeWorkers.length} Active, {deadWorkers.length} Dead)</h3>
                 <table className="workers-table">
                     <thead>
                         <tr>
@@ -70,26 +166,39 @@ function Admin() {
                         </tr>
                     </thead>
                     <tbody>
-                        {workers.map(worker => (
-                            <tr key={worker.worker_id}>
-                                <td>{worker.worker_id}</td>
-                                <td>
-                                    <span className="status-badge status-success">Active</span>
-                                </td>
-                                <td>{new Date(worker.last_heartbeat).toLocaleString()}</td>
-                            </tr>
-                        ))}
+                        {workers.map(worker => {
+                            const heartbeatAge = Date.now() - new Date(worker.last_heartbeat).getTime();
+                            const isAlive = heartbeatAge <= 30000;
+
+                            return (
+                                <tr key={worker.worker_id} className={!isAlive ? 'worker-dead' : ''}>
+                                    <td>{worker.worker_id}</td>
+                                    <td>
+                                        <span className={`status-badge ${isAlive ? 'status-active' : 'status-dead'}`}>
+                                            {isAlive ? '✅ Active' : '💀 Dead'}
+                                        </span>
+                                    </td>
+                                    <td>{new Date(worker.last_heartbeat).toLocaleString()}</td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
-                {workers.length === 0 && (
-                    <p className="no-data">No active workers</p>
-                )}
-                {workers.length > 10 && (
-                    <p style={{ fontStyle: 'italic', color: '#666', marginTop: '10px' }}>
-                        Showing 10 of {workers.length} workers
-                    </p>
-                )}
             </div>
+
+            <div className="admin-section">
+                <h3>Complete System Timeline</h3>
+                <EventTimeline scope="admin" />
+            </div>
+
+            {/* Toast Notifications */}
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                />
+            )}
         </div>
     );
 }

@@ -1,153 +1,645 @@
-# Docs
+# Distributed Task Scheduler - Complete Documentation
 
-Project documentation including architecture diagrams and design documents.
+## Table of Contents
+1. [System Overview](#system-overview)
+2. [Architecture](#architecture)
+3. [Phase Implementations](#phase-implementations)
+4. [API Reference](#api-reference)
+5. [Deployment Guide](#deployment-guide)
+6. [Troubleshooting](#troubleshooting)
 
-## Structure
+---
+
+## System Overview
+
+A production-ready distributed task scheduler with fault tolerance, leader election, real-time monitoring, and visual observability.
+
+### Key Features
+- ✅ Distributed leader election (Etcd)
+- ✅ Task queue with Redis
+- ✅ PostgreSQL for persistent storage
+- ✅ Multi-instance schedulers (active-standby)
+- ✅ Multi-instance workers (horizontal scaling)
+- ✅ Real-time WebSocket updates
+- ✅ Interactive system topology visualization
+- ✅ Comprehensive fault injection
+- ✅ Event logging and timeline
+- ✅ Production and development modes
+
+---
+
+## Architecture
+
+### System Components
 
 ```
-docs/
-└── diagrams/
-    ├── HLD.md      # High-Level Design
-    ├── LLD.md      # Low-Level Design
-    └── FLOWS.md    # Flow Diagrams
+┌─────────────────────────────────────────────────────────────┐
+│                         Frontend (React)                     │
+│  - Dashboard  - Jobs  - Admin Panel  - System Topology      │
+└────────────────────────┬────────────────────────────────────┘
+                         │ HTTP + WebSocket
+┌────────────────────────┴────────────────────────────────────┐
+│                      API Server (Express)                    │
+│  - REST API  - WebSocket Server  - Fault Injection          │
+└─────┬──────────────┬──────────────┬────────────────────────┘
+      │              │              │
+      ▼              ▼              ▼
+┌──────────┐  ┌──────────┐  ┌──────────┐
+│Scheduler1│  │Scheduler2│  │PostgreSQL│
+│ (Leader) │  │(Standby) │  │  (Tasks) │
+└────┬─────┘  └────┬─────┘  └──────────┘
+     │             │
+     └──────┬──────┘
+            ▼
+      ┌──────────┐
+      │   Etcd   │
+      │(Election)│
+      └──────────┘
+            │
+     ┌──────┴──────┐
+     ▼             ▼
+┌─────────┐   ┌─────────┐
+│  Redis  │   │ Workers │
+│ (Queue) │◄──┤  (1-3)  │
+└─────────┘   └─────────┘
 ```
 
-## Documents
+### Technology Stack
 
-### High-Level Design (HLD.md)
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| Frontend | React + Vite | UI dashboard |
+| API | Node.js + Express | REST API |
+| Schedulers | Node.js | Task dispatching |
+| Workers | Node.js | Task execution |
+| Database | PostgreSQL | Task persistence |
+| Queue | Redis | Task distribution |
+| Leader Election | Etcd | Distributed consensus |
+| Real-time | Socket.io | WebSocket updates |
 
-**Purpose:** System architecture and design principles
+---
 
-**Contents:**
-- System overview
-- 3-service architecture (API, Scheduler, Worker)
-- Component responsibilities
-- Data flow and job lifecycle
-- Fault tolerance strategies
-- Scalability patterns
-- Interview talking points
+## Phase Implementations
 
-**Audience:** Interviewers, architects, new team members
+### Phase A: Core Functionality
+- [x] Task creation and storage
+- [x] Basic scheduler
+- [x] Worker execution
+- [x] PostgreSQL integration
+- [x] Redis queue
 
-### Low-Level Design (LLD.md)
+**Documentation**: `docs/PHASE_A_IMPLEMENTATION.md`
 
-**Purpose:** Implementation details and technical specifications
+### Phase B: Enhanced Fault Injection
+- [x] Process registry
+- [x] Multi-instance tracking
+- [x] Targeted fault injection
+- [x] Leader/worker kill endpoints
 
-**Contents:**
-- Database schema with indexes
-- API endpoint specifications
-- Dispatcher/Watcher implementation
-- Redis Streams operations
-- Worker execution flow
-- Lease acquisition mechanism
-- Task executors (HTTP, Shell, Delay)
-- Leader election implementation
-- Configuration and deployment
+**Documentation**: `docs/PHASE_B_IMPLEMENTATION.md`
 
-**Audience:** Developers, implementers
+### Phase C: Demo Mode
+- [x] Event logging system
+- [x] 3-tier event display
+- [x] Scheduler enable/disable
+- [x] Worker status tracking
+- [x] Execution delays
 
-### Flow Diagrams (FLOWS.md)
+**Documentation**: `docs/PHASE_C_IMPLEMENTATION.md`
 
-**Purpose:** Visual representations of system behavior
+### Phase D: Real-Time Updates & Visualization
+- [x] WebSocket real-time updates
+- [x] System topology visualization
+- [x] Enhanced event logging
+- [x] Redis-based state management
+- [x] Production mode support
 
-**Contents:**
-- 15+ Mermaid diagrams including:
-  - System architecture overview
-  - Job lifecycle state machine
-  - End-to-end sequence diagrams
-  - Dispatch/retry/execution flows
-  - Leader election flow
-  - Lease-based execution
-  - Failure recovery scenarios
-  - Scalability patterns
+**Documentation**: `docs/PHASE_D_IMPLEMENTATION.md`
 
-**Audience:** Visual learners, presentations, documentation
+---
 
-## How to Use
+## Quick Start
 
-### For Interviews
+### Prerequisites
 
-1. **Start with HLD** - Explain architecture at high level
-2. **Dive into LLD** - Show implementation details when asked
-3. **Use FLOWS** - Visual aids for complex concepts
+```bash
+# Install infrastructure services
+brew install redis etcd postgresql@14
 
-### For Development
+# Start services
+brew services start redis
+brew services start etcd
+brew services start postgresql@14
 
-1. **Reference LLD** - Implementation specifications
-2. **Check FLOWS** - Understand component interactions
-3. **Update docs** - Keep in sync with code changes
-
-### For Onboarding
-
-1. **Read HLD** - Understand system design
-2. **Study FLOWS** - Visual understanding
-3. **Deep dive LLD** - Implementation details
-
-## Viewing Diagrams
-
-All diagrams use **Mermaid** syntax and render in:
-- GitHub (automatic)
-- VS Code (with Mermaid extension)
-- Most markdown viewers
-
-**VS Code Extension:**
-```
-Name: Markdown Preview Mermaid Support
-ID: bierner.markdown-mermaid
+# Create database
+createdb -U user task_scheduler
+psql -U user -d task_scheduler -f Server/db/schema.sql
 ```
 
-## Key Concepts Documented
+### Development Mode (Auto-Restart)
 
-### Architecture
-- 3-service separation (API, Scheduler, Worker)
-- Database as source of truth
-- Queue as transport layer
-- Leader election for coordination
+```bash
+# Install dependencies
+cd Server && npm install
+cd ../Client && npm install
 
-### Execution Model
-- Lease-based execution
-- At-least-once semantics
-- Exponential backoff retry
-- Dead Letter Queue
+# Start system
+cd ..
+./run.sh
 
-### Fault Tolerance
-- Leader failover
-- Worker crash recovery
-- Redis outage handling
-- Database outage handling
+# Access
+# Frontend: http://localhost:5173
+# API: http://localhost:3000
+```
 
-### Scalability
-- Horizontal worker scaling
-- Batch dispatch operations
-- Consumer groups for load distribution
-- Stateless API servers
+### Production Mode (No Auto-Restart)
 
-## Interview Talking Points
+```bash
+# Start system
+./run_prod.sh
 
-Memorize these from HLD:
+# Workers stay dead when killed
+# Demonstrates true fault tolerance
+```
 
-> **"The database is the single source of truth; queues are only delivery mechanisms."**
+### Stop System
 
-> **"The watcher bridges wall-clock time and asynchronous execution."**
+```bash
+./stop.sh
+```
 
-> **"We use Redis Streams as a durable, replayable dispatch layer."**
+---
 
-> **"Workers use lease-based execution to guarantee at-least-once semantics."**
+## API Reference
 
-## Maintenance
+### Tasks
 
-When making architectural changes:
+#### Create Task
+```http
+POST /tasks
+Content-Type: application/json
 
-1. Update code first
-2. Update LLD with implementation details
-3. Update HLD if design principles change
-4. Update FLOWS if data flow changes
-5. Keep diagrams in sync with reality
+{
+  "type": "SHELL",
+  "payload": {
+    "command": "echo 'Hello World'"
+  }
+}
+```
 
-## Related Documentation
+#### Get Task
+```http
+GET /tasks/:id
+```
 
-- `../Server/README.md` - Server architecture
-- `../Server/api/README.md` - API documentation
-- `../Server/scheduler/README.md` - Scheduler documentation
-- `../Server/worker/README.md` - Worker documentation
-- `../.vscode/DEBUG_GUIDE.md` - Debugging guide
+#### List Tasks
+```http
+GET /tasks?status=PENDING&limit=50
+```
+
+### System
+
+#### Get System Status
+```http
+GET /system/status
+```
+
+Response:
+```json
+{
+  "status": "success",
+  "data": {
+    "scheduler": {
+      "enabled": true,
+      "leader": "scheduler-abc123"
+    },
+    "redis": {
+      "connected": true,
+      "queueDepth": 5
+    },
+    "database": {
+      "connected": true
+    }
+  }
+}
+```
+
+#### Get Instances
+```http
+GET /instances
+```
+
+Response:
+```json
+{
+  "status": "success",
+  "data": {
+    "schedulers": [
+      {
+        "id": "scheduler-abc123",
+        "pid": 12345,
+        "isLeader": true,
+        "startedAt": "2026-01-03T12:00:00Z"
+      }
+    ],
+    "workers": [
+      {
+        "id": "worker-def456",
+        "pid": 12346,
+        "status": "idle",
+        "currentTaskId": null,
+        "startedAt": "2026-01-03T12:00:01Z"
+      }
+    ]
+  }
+}
+```
+
+### Admin / Fault Injection
+
+#### Kill Leader
+```http
+POST /admin/faults/kill-leader
+```
+
+#### Kill Worker
+```http
+POST /admin/faults/kill-worker
+Content-Type: application/json
+
+{
+  "workerId": "worker-abc123"  // Optional, random if not specified
+}
+```
+
+#### Enable Scheduler
+```http
+POST /admin/scheduler/enable
+```
+
+#### Disable Scheduler
+```http
+POST /admin/scheduler/disable
+```
+
+### Events
+
+#### Get Events
+```http
+GET /events?limit=50&taskId=task-123
+```
+
+---
+
+## WebSocket Events
+
+### Client → Server
+None (client only listens)
+
+### Server → Client
+
+#### system:update
+Broadcast every 2 seconds with complete system state.
+
+```javascript
+{
+  schedulers: [...],
+  workers: [...],
+  events: [...],
+  timestamp: "2026-01-03T12:00:00Z"
+}
+```
+
+#### instances:update
+Emitted when instances change (fault injection, startup, shutdown).
+
+```javascript
+{
+  schedulers: [...],
+  workers: [...],
+  timestamp: "2026-01-03T12:00:00Z"
+}
+```
+
+#### event:new
+Emitted when new event is logged.
+
+```javascript
+{
+  type: "WORKER_KILLED",
+  data: {...},
+  timestamp: "2026-01-03T12:00:00Z"
+}
+```
+
+---
+
+## Deployment Guide
+
+### Environment Variables
+
+Create `.env` file in `Server/`:
+
+```env
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=user
+DB_PASSWORD=password
+DB_NAME=task_scheduler
+
+# Redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+# Etcd
+ETCD_HOSTS=localhost:2379
+
+# Server
+PORT=3000
+NODE_ENV=production
+```
+
+### Production Deployment
+
+```bash
+# Build frontend
+cd Client
+npm run build
+
+# Serve frontend with nginx/apache
+# Point to Client/dist/
+
+# Start backend with PM2
+cd Server
+pm2 start ecosystem.config.js
+```
+
+### PM2 Configuration
+
+**File**: `Server/ecosystem.config.js`
+
+```javascript
+module.exports = {
+  apps: [
+    {
+      name: 'api',
+      script: 'api/server.js',
+      instances: 1,
+      env: {
+        NODE_ENV: 'production'
+      }
+    },
+    {
+      name: 'scheduler',
+      script: 'scheduler/index.js',
+      instances: 2,
+      env: {
+        NODE_ENV: 'production'
+      }
+    },
+    {
+      name: 'worker',
+      script: 'worker/index.js',
+      instances: 3,
+      env: {
+        NODE_ENV: 'production'
+      }
+    }
+  ]
+};
+```
+
+---
+
+## Troubleshooting
+
+### Redis Connection Failed
+
+```bash
+# Check if Redis is running
+redis-cli ping
+
+# Should return: PONG
+
+# If not running
+brew services start redis
+```
+
+### Etcd Connection Failed
+
+```bash
+# Check if Etcd is running
+etcdctl endpoint health
+
+# Or
+curl http://localhost:2379/health
+
+# If not running
+brew services start etcd
+```
+
+### PostgreSQL Connection Failed
+
+```bash
+# Check if PostgreSQL is running
+psql -U user -d task_scheduler -c "SELECT 1"
+
+# If not running
+brew services start postgresql@14
+
+# If database doesn't exist
+createdb -U user task_scheduler
+psql -U user -d task_scheduler -f Server/db/schema.sql
+```
+
+### Workers Not Picking Up Tasks
+
+1. Check Redis queue:
+```bash
+redis-cli XLEN task_queue
+```
+
+2. Check worker logs:
+```bash
+tail -f logs/worker1.log
+```
+
+3. Check if scheduler is enabled:
+```bash
+curl http://localhost:3000/system/status | jq '.data.scheduler.enabled'
+```
+
+### Leader Not Elected
+
+1. Check Etcd:
+```bash
+etcdctl get /scheduler/leader
+```
+
+2. Check scheduler logs:
+```bash
+tail -f logs/scheduler1.log
+tail -f logs/scheduler2.log
+```
+
+3. Restart schedulers:
+```bash
+./stop.sh
+./run.sh
+```
+
+### WebSocket Not Connecting
+
+1. Check API server logs:
+```bash
+tail -f logs/api.log | grep WebSocket
+```
+
+2. Check browser console for errors
+
+3. Verify CORS settings in `Server/api/websocket.js`:
+```javascript
+cors: {
+    origin: 'http://localhost:5173',
+    methods: ['GET', 'POST']
+}
+```
+
+---
+
+## Monitoring
+
+### System Health
+
+```bash
+# Check all services
+curl http://localhost:3000/health
+
+# Check system status
+curl http://localhost:3000/system/status
+
+# Check instances
+curl http://localhost:3000/instances
+```
+
+### Logs
+
+```bash
+# API
+tail -f logs/api.log
+
+# Schedulers
+tail -f logs/scheduler1.log
+tail -f logs/scheduler2.log
+
+# Workers
+tail -f logs/worker1.log
+tail -f logs/worker2.log
+tail -f logs/worker3.log
+
+# Frontend
+tail -f logs/client.log
+```
+
+### Redis Monitoring
+
+```bash
+# Queue depth
+redis-cli XLEN task_queue
+
+# Failed workers set
+redis-cli SMEMBERS scheduler:failed_workers
+
+# Event log
+redis-cli LLEN system:events
+```
+
+---
+
+## Performance Tuning
+
+### Scheduler Dispatch Interval
+
+**File**: `Server/scheduler/task-dispatcher/dispatcher.js`
+
+```javascript
+// Default: 2 seconds
+this.interval = setInterval(() => this._dispatchLoop(), 2000);
+
+// For higher throughput
+this.interval = setInterval(() => this._dispatchLoop(), 500);
+```
+
+### Worker Heartbeat Interval
+
+**File**: `Server/worker/heartbeat/heartbeat-sender.js`
+
+```javascript
+// Default: 5 seconds
+this.interval = setInterval(() => this.sendHeartbeat(), 5000);
+
+// For faster failure detection
+this.interval = setInterval(() => this.sendHeartbeat(), 2000);
+```
+
+### Leader Election TTL
+
+**File**: `Server/scheduler/leader-election/leader-election.js`
+
+```javascript
+// Default: 3 seconds
+this.election = client.election(this.key, 3);
+
+// For more stability (slower failover)
+this.election = client.election(this.key, 10);
+```
+
+---
+
+## Contributing
+
+### Code Structure
+
+```
+distributed-task-scheduler/
+├── Server/
+│   ├── api/              # REST API + WebSocket
+│   ├── scheduler/        # Task dispatcher + leader election
+│   ├── worker/           # Task executor
+│   ├── db/               # Database + repositories
+│   ├── queue/            # Redis queue
+│   └── common/           # Shared utilities
+├── Client/
+│   ├── src/
+│   │   ├── pages/        # Dashboard, Jobs, Admin
+│   │   ├── components/   # Reusable components
+│   │   └── api/          # API client
+│   └── public/
+├── docs/                 # Documentation
+├── logs/                 # Log files
+├── run.sh                # Development mode
+├── run_prod.sh           # Production mode
+└── stop.sh               # Stop all services
+```
+
+### Development Workflow
+
+1. Make changes
+2. Test locally with `./run.sh`
+3. Test fault injection
+4. Test production mode with `./run_prod.sh`
+5. Update documentation
+6. Commit changes
+
+---
+
+## License
+
+MIT
+
+---
+
+## Support
+
+For issues, questions, or contributions, please refer to the individual phase documentation files in the `docs/` directory.

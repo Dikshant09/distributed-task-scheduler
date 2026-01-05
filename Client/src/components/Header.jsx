@@ -38,7 +38,7 @@ function Header() {
                     Leader: <strong>{leaderId}</strong>
                 </div>
                 <div className="user-menu">
-                    <span>admin</span>
+                    <span>Admin</span>
                 </div>
             </div>
         </header>

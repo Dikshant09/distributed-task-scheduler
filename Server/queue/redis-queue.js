@@ -26,30 +26,40 @@ const pushTask = async (taskId, metrics = { attempt: 0 }) => {
 };
 
 const consume = async (consumerName) => {
-    // XREADGROUP
-    // count: 1, block: 2000
-    const results = await redis.xreadgroup(
-        'GROUP', CONSUMER_GROUP, consumerName,
-        'COUNT', 1,
-        'BLOCK', 2000,
-        'STREAMS', STREAM_NAME, '>'
-    );
+    try {
+        // XREADGROUP
+        // count: 1, block: 2000
+        const results = await redis.xreadgroup(
+            'GROUP', CONSUMER_GROUP, consumerName,
+            'COUNT', 1,
+            'BLOCK', 2000,
+            'STREAMS', STREAM_NAME, '>'
+        );
 
-    if (!results) return null;
+        if (!results) return null;
 
-    // structure: [[streamName, [[messageId, [fields]]]]]
-    const [streamData] = results;
-    const metrics = streamData[1][0];
-    const messageId = metrics[0];
-    const fields = metrics[1];
+        // structure: [[streamName, [[messageId, [fields]]]]]
+        const [streamData] = results;
+        const metrics = streamData[1][0];
+        const messageId = metrics[0];
+        const fields = metrics[1];
 
-    // Parse fields array ['task_id', '123', 'attempt', '0']
-    const taskData = {};
-    for (let i = 0; i < fields.length; i += 2) {
-        taskData[fields[i]] = fields[i + 1];
+        // Parse fields array ['task_id', '123', 'attempt', '0']
+        const taskData = {};
+        for (let i = 0; i < fields.length; i += 2) {
+            taskData[fields[i]] = fields[i + 1];
+        }
+
+        return { messageId, ...taskData };
+    } catch (err) {
+        // Self-healing: recreate consumer group if it doesn't exist
+        if (err.message.includes('NOGROUP')) {
+            logger.warn('Consumer group not found, recreating...');
+            await initGroup();
+            return null; // Return null and retry on next iteration
+        }
+        throw err; // Re-throw other errors
     }
-
-    return { messageId, ...taskData };
 };
 
 const ack = async (messageId) => {

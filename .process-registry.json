@@ -1,0 +1,17 @@
+{
+  "schedulers": [],
+  "workers": [
+    {
+      "id": "worker-1c0c2055",
+      "pid": 77703,
+      "status": "active",
+      "startedAt": "2026-01-03T07:18:13.620Z"
+    },
+    {
+      "id": "worker-5b000a4a",
+      "pid": 77704,
+      "status": "active",
+      "startedAt": "2026-01-03T07:18:13.630Z"
+    }
+  ]
+}

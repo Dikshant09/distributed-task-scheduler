@@ -1,0 +1,226 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36" version="29.2.9">
+  <diagram id="distributed-task-scheduler-hld-v2" name="HLD V2 - SRP Architecture">
+    <mxGraphModel dx="1366" dy="668" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1" value="Distributed Task Scheduler - V2 SRP Architecture (Decoupled Design)" vertex="1">
+          <mxGeometry height="40" width="800" x="400" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="user" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="👤 User" vertex="1">
+          <mxGeometry height="80" width="40" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="frontend-box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="250" width="180" x="100" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="frontend-label" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=14;fontStyle=1" value="🖥️ Frontend (React)" vertex="1">
+          <mxGeometry height="30" width="140" x="120" y="75" as="geometry" />
+        </mxCell>
+        <mxCell id="dashboard" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Dashboard" vertex="1">
+          <mxGeometry height="30" width="70" x="120" y="115" as="geometry" />
+        </mxCell>
+        <mxCell id="topology" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Topology" vertex="1">
+          <mxGeometry height="30" width="60" x="200" y="115" as="geometry" />
+        </mxCell>
+        <mxCell id="jobs-ui" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Jobs" vertex="1">
+          <mxGeometry height="30" width="70" x="120" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="admin-ui" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Admin" vertex="1">
+          <mxGeometry height="30" width="60" x="200" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="ws-note" parent="1" style="text;html=1;align=center;fontSize=9;fontStyle=2" value="WebSocket + HTTP Polling" vertex="1">
+          <mxGeometry height="20" width="130" x="180" y="195" as="geometry" />
+        </mxCell>
+        <mxCell id="api-box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="180" width="160" x="340" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="api-label" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=14;fontStyle=1" value="🌐 API Layer" vertex="1">
+          <mxGeometry height="25" width="120" x="360" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="rest" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="REST API&#xa;/tasks, /admin" vertex="1">
+          <mxGeometry height="40" width="120" x="360" y="145" as="geometry" />
+        </mxCell>
+        <mxCell id="websocket" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Socket.IO&#xa;Real-time Events" vertex="1">
+          <mxGeometry height="40" width="120" x="360" y="197" as="geometry" />
+        </mxCell>
+        <mxCell id="port-note" parent="1" style="text;html=1;align=center;fontSize=9;fontStyle=2" value="Port 3000" vertex="1">
+          <mxGeometry height="15" width="60" x="450" y="245" as="geometry" />
+        </mxCell>
+        <mxCell id="coordinator-box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=3;" value="" vertex="1">
+          <mxGeometry height="200" width="320" x="540" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="coordinator-label" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=13;fontStyle=1" value="⚡ Scheduler Coordinator (LEADER ELECTED)" vertex="1">
+          <mxGeometry height="25" width="280" x="560" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="leader" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b8e994;strokeColor=#27ae60;strokeWidth=2" value="🏆 Leader (Active)&#xa;coordinator-xxx" vertex="1">
+          <mxGeometry height="45" width="100" x="560" y="125" as="geometry" />
+        </mxCell>
+        <mxCell id="standby1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" value="⏸️ Standby" vertex="1">
+          <mxGeometry height="45" width="70" x="670" y="125" as="geometry" />
+        </mxCell>
+        <mxCell id="standby2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" value="⏸️ Standby" vertex="1">
+          <mxGeometry height="45" width="70" x="750" y="125" as="geometry" />
+        </mxCell>
+        <mxCell id="mark-ready" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="Mark PENDING → READY&#xa;(scheduled_at &lt;= NOW)" vertex="1">
+          <mxGeometry height="45" width="140" x="560" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="election-box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="campaign.on(&#39;elected&#39;)&#xa;campaign.on(&#39;lost&#39;)" vertex="1">
+          <mxGeometry height="45" width="130" x="710" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="coord-note" parent="1" style="text;html=1;align=center;fontSize=9;fontStyle=2" value="SRP: Only marks tasks ready" vertex="1">
+          <mxGeometry height="20" width="150" x="610" y="235" as="geometry" />
+        </mxCell>
+        <mxCell id="dispatcher-box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="100" width="160" x="340" y="515" as="geometry" />
+        </mxCell>
+        <mxCell id="dispatcher-label" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=12;fontStyle=1" value="📤 Dispatcher (Stateless)" vertex="1">
+          <mxGeometry height="20" width="140" x="350" y="525" as="geometry" />
+        </mxCell>
+        <mxCell id="dispatch-task" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="READY → Redis → DISPATCHED" vertex="1">
+          <mxGeometry height="40" width="130" x="355" y="555" as="geometry" />
+        </mxCell>
+        <mxCell id="recovery-box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="105" width="150" x="1130" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="recovery-label" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=12;fontStyle=1" value="🔄 Recovery (Stateless)" vertex="1">
+          <mxGeometry height="20" width="120" x="1140" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="retry-dlq" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="Retry Handler&#xa;DLQ + Lease Reaper" vertex="1">
+          <mxGeometry height="40" width="120" x="1150" y="257.5" as="geometry" />
+        </mxCell>
+        <mxCell id="monitor-box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="80" width="160" x="895" y="355" as="geometry" />
+        </mxCell>
+        <mxCell id="monitor-label" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=12;fontStyle=1" value="👁️ Worker Monitor" vertex="1">
+          <mxGeometry height="20" width="130" x="910" y="365" as="geometry" />
+        </mxCell>
+        <mxCell id="heartbeat" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="Heartbeat Checker" vertex="1">
+          <mxGeometry height="30" width="120" x="915" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="pg" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;" value="PostgreSQL&#xa;(Source of Truth)" vertex="1">
+          <mxGeometry height="80" width="100" x="650" y="355" as="geometry" />
+        </mxCell>
+        <mxCell id="pg-tables" parent="1" style="text;html=1;align=left;fontSize=9" value="• tasks&#xa;• process_instances&#xa;• workers&#xa;• task_executions" vertex="1">
+          <mxGeometry height="60" width="100" x="540" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="etcd" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Etcd&#xa;(Leader Election)" vertex="1">
+          <mxGeometry height="80" width="100" x="965" y="82.5" as="geometry" />
+        </mxCell>
+        <mxCell id="etcd-note" parent="1" style="text;html=1;align=left;fontSize=9" value="Event-based campaign:&#xa;campaign.on(&#39;elected&#39;)&#xa;campaign.on(&#39;lost&#39;)" vertex="1">
+          <mxGeometry height="50" width="120" x="965" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="redis" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f8cecc;strokeColor=#b85450;" value="Redis Streams&#xa;(Task Queue)" vertex="1">
+          <mxGeometry height="80" width="100" x="625" y="525" as="geometry" />
+        </mxCell>
+        <mxCell id="redis-note" parent="1" style="text;html=1;align=left;fontSize=9" value="• Consumer Groups&#xa;• At-least-once delivery" vertex="1">
+          <mxGeometry height="30" width="110" x="625" y="615" as="geometry" />
+        </mxCell>
+        <mxCell id="workers-box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="120" width="180" x="895" y="505" as="geometry" />
+        </mxCell>
+        <mxCell id="workers-label" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=12;fontStyle=1" value="👷 Worker Pool (5 workers)" vertex="1">
+          <mxGeometry height="20" width="160" x="905" y="515" as="geometry" />
+        </mxCell>
+        <mxCell id="w1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b8e994;strokeColor=#27ae60;" value="W1" vertex="1">
+          <mxGeometry height="30" width="35" x="910" y="545" as="geometry" />
+        </mxCell>
+        <mxCell id="w2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b8e994;strokeColor=#27ae60;" value="W2" vertex="1">
+          <mxGeometry height="30" width="35" x="950" y="545" as="geometry" />
+        </mxCell>
+        <mxCell id="w3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b8e994;strokeColor=#27ae60;" value="..." vertex="1">
+          <mxGeometry height="30" width="35" x="990" y="545" as="geometry" />
+        </mxCell>
+        <mxCell id="w5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b8e994;strokeColor=#27ae60;" value="W5" vertex="1">
+          <mxGeometry height="30" width="35" x="1030" y="545" as="geometry" />
+        </mxCell>
+        <mxCell id="worker-task" parent="1" style="text;html=1;align=center;fontSize=9;fontStyle=2" value="Consume → Execute → Update" vertex="1">
+          <mxGeometry height="20" width="150" x="915" y="585" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow1" edge="1" parent="1" source="user" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#6c8ebf;" target="frontend-box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow2" edge="1" parent="1" source="frontend-box" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#82b366;" target="api-box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow3" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#666666;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="395" y="312.5" />
+              <mxPoint x="680" y="312.5" />
+            </Array>
+            <mxPoint x="395.02127659574467" y="282.5" as="sourcePoint" />
+            <mxPoint x="680" y="357.5" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow4" edge="1" parent="1" source="coordinator-box" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#6c8ebf;" target="pg">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow5" edge="1" parent="1" source="leader" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#9673a6;" target="etcd">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="610" y="120" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow6" edge="1" parent="1" source="dispatcher-box" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#b85450;" target="redis">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow7" edge="1" parent="1" source="redis" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#d6b656;" target="workers-box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow8" edge="1" parent="1" source="workers-box" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#666666;dashed=1;" target="pg">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="810" y="580" />
+              <mxPoint x="970" y="580" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow9" edge="1" parent="1" source="recovery-box" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#b85450;dashed=1;exitX=-0.014;exitY=0.483;exitDx=0;exitDy=0;exitPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1120" y="271" />
+              <mxPoint x="1120" y="300" />
+              <mxPoint x="730" y="300" />
+            </Array>
+            <mxPoint x="1120" y="260" as="sourcePoint" />
+            <mxPoint x="730" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow10" edge="1" parent="1" source="monitor-box" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#9673a6;dashed=1" target="pg">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" value="" vertex="1">
+          <mxGeometry height="200" width="200" x="1130" y="365" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-title" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontStyle=1" value="SRP Service Responsibilities" vertex="1">
+          <mxGeometry height="20" width="170" x="1135" y="375" as="geometry" />
+        </mxCell>
+        <mxCell id="legend1" parent="1" style="text;html=1;align=left;fontSize=9" value="⚡ Coordinator: PENDING→READY" vertex="1">
+          <mxGeometry height="20" width="175" x="1132.5" y="405" as="geometry" />
+        </mxCell>
+        <mxCell id="legend2" parent="1" style="text;html=1;align=left;fontSize=9" value="📤 Dispatcher: READY→Redis" vertex="1">
+          <mxGeometry height="20" width="175" x="1145" y="425" as="geometry" />
+        </mxCell>
+        <mxCell id="legend3" parent="1" style="text;html=1;align=left;fontSize=9" value="🔄 Recovery: Retries, DLQ, Leases" vertex="1">
+          <mxGeometry height="20" width="175" x="1145" y="445" as="geometry" />
+        </mxCell>
+        <mxCell id="legend4" parent="1" style="text;html=1;align=left;fontSize=9" value="👁️ Monitor: Heartbeat checking" vertex="1">
+          <mxGeometry height="20" width="175" x="1145" y="465" as="geometry" />
+        </mxCell>
+        <mxCell id="legend5" parent="1" style="text;html=1;align=left;fontSize=9" value="👷 Workers: Execute tasks" vertex="1">
+          <mxGeometry height="20" width="175" x="1145" y="485" as="geometry" />
+        </mxCell>
+        <mxCell id="legend6" parent="1" style="text;html=1;align=center;fontSize=9" value="─────────────────" vertex="1">
+          <mxGeometry height="15" width="170" x="1145" y="505" as="geometry" />
+        </mxCell>
+        <mxCell id="legend7" parent="1" style="text;html=1;align=left;fontSize=9;fontStyle=1" value="✅ Only Coordinator is leader-elected" vertex="1">
+          <mxGeometry height="20" width="180" x="1145" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="legend8" parent="1" style="text;html=1;align=left;fontSize=9;fontStyle=1" value="✅ All other services are stateless" vertex="1">
+          <mxGeometry height="20" width="180" x="1145" y="540" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

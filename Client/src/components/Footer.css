@@ -1,0 +1,42 @@
+.app-footer {
+    background: linear-gradient(135deg, rgba(15, 15, 26, 0.95), rgba(20, 20, 35, 0.95));
+    border-top: 1px solid rgba(99, 102, 241, 0.2);
+    padding: 16px 24px;
+    margin-top: auto;
+    backdrop-filter: blur(10px);
+}
+
+.footer-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.copyright {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.footer-divider {
+    color: rgba(99, 102, 241, 0.5);
+}
+
+.footer-tagline {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.8rem;
+}
+
+/* Make footer stick to bottom */
+@media (max-width: 600px) {
+    .footer-content {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .footer-divider {
+        display: none;
+    }
+}

@@ -1,139 +1,117 @@
 # Client
 
-React-based UI for the Distributed Task Scheduler.
+Modern React-based UI for the Distributed Task Scheduler with real-time visualization.
 
-## Purpose
+## Features
 
-Provide a minimal, systems-first UI to:
-- Create and schedule jobs
-- Monitor system status
-- View job execution history
-- Manage DLQ tasks
-- Perform admin operations
+- 🎨 **Modern Dark Theme** - Glassmorphism effects with vibrant gradients
+- 📊 **Real-time Topology** - Interactive system diagram showing schedulers, workers, and task flow
+- 🧪 **Chaos Engineering** - Built-in failure simulation controls
+- 📋 **Event Timeline** - Live system event tracking
+- 🔔 **Toast Notifications** - Modern, non-intrusive user feedback
+- ⚡ **Real-time Updates** - WebSocket-based live data
 
 ## Structure
 
 ```
 Client/
 ├── src/
-│   ├── api/           # API client
-│   ├── components/    # React components
-│   ├── pages/         # Page components
-│   ├── App.jsx        # Main app with routing
-│   └── main.jsx       # Entry point
-├── public/            # Static assets
-└── package.json       # Dependencies
+│   ├── api/              # API client (Axios)
+│   ├── components/       # Reusable components
+│   │   ├── Header.jsx    # App header with status
+│   │   ├── SystemTopology.jsx  # Interactive topology diagram
+│   │   ├── EventTimeline.jsx   # Event log component
+│   │   └── Toast.jsx     # Toast notification system
+│   ├── pages/            # Page components
+│   │   ├── Dashboard.jsx # System overview + chaos testing
+│   │   ├── Jobs.jsx      # Job list and management
+│   │   ├── JobDetail.jsx # Individual job details
+│   │   ├── Schedule.jsx  # Create new jobs
+│   │   └── Admin.jsx     # Admin controls
+│   ├── App.jsx           # Main app with routing
+│   └── main.jsx          # Entry point
+├── public/               # Static assets
+└── package.json          # Dependencies
 ```
 
 ## Pages
 
-### 1. Dashboard (`pages/Dashboard.jsx`)
-
-**Purpose:** System overview and monitoring
-
+### 1. Dashboard
 **Features:**
-- System metrics (scheduler state, leader info, uptime)
-- Worker count
-- Redis queue depth
+- Real-time system topology visualization
+- Failure simulation controls (Kill Leader, Kill Worker, Pause Queue, Disable Scheduler)
+- Scheduler and worker instance cards
+- System metrics (queue depth, active workers, scheduler state)
 - Job statistics (success/failure rates)
-- Fault injection controls (for testing)
+- Recent system events timeline
 
-### 2. Jobs (`pages/Jobs.jsx`)
-
-**Purpose:** View and manage jobs
-
+### 2. Jobs
 **Features:**
-- Filterable job table (by status)
-- Job detail drawer with:
-  - Execution history
-  - Attempt count
-  - Worker assignment
-  - Error messages
-- "Run Now" button for immediate execution
+- Filterable job table (All, Pending, Running, Success, Failed)
+- Job detail view with execution history
+- Real-time status updates
+- Task-specific event timeline
 
-### 3. Schedule (`pages/Schedule.jsx`)
-
-**Purpose:** Create new jobs
-
+### 3. Schedule
 **Features:**
-- Job type selector (HTTP, Shell, Delay)
-- Payload editor with templates
+- Create new jobs with templates (HTTP, Shell, Delay)
+- JSON payload editor
 - Schedule time picker
 - Recent jobs list
 
-### 4. Admin (`pages/Admin.jsx`)
-
-**Purpose:** Administrative operations
-
+### 4. Admin
 **Features:**
-- Scheduler enable/disable
-- Active workers list
-- DLQ management
-- System controls
+- Scheduler enable/disable controls
+- Active workers list with heartbeat status
+- Dead workers monitoring
+- Complete system event timeline
 
 ## Components
 
-### `Header.jsx`
+### SystemTopology
+Interactive SVG diagram showing:
+- Scheduler instances (leader + standbys)
+- Redis queue with depth indicator
+- Worker pool (up to 5 displayed)
+- Animated task flow
+- Real-time WebSocket updates
 
-Persistent header showing:
-- Scheduler status (enabled/disabled)
-- Current leader ID
-- Real-time updates via polling
+### EventTimeline
+Real-time event log with:
+- Color-coded event types
+- Relative timestamps ("Just now", "5 mins ago")
+- Metadata display (task/worker/scheduler IDs)
+- Scope filtering (dashboard, admin, task-specific)
 
-### Tab Navigation
-
-Tabs for switching between pages:
-- Dashboard
-- Jobs
-- Schedule
-- Admin
-
-## API Client
-
-**File:** `src/api/api.js`
-
-Axios-based client for backend API:
-
-```javascript
-import api from './api/api';
-
-// Create job
-const task = await api.createTask(jobData);
-
-// Get system status
-const status = await api.getSystemStatus();
-
-// View DLQ
-const dlq = await api.getDLQTasks();
-```
-
-**Endpoints:**
-- Job management: `createTask`, `getTasks`, `getTask`, `runNow`
-- System: `getSystemStatus`
-- Admin: `enableScheduler`, `disableScheduler`, `getDLQTasks`, `retryFromDLQ`
-- Fault injection: `killLeader`, `killWorker`, `pauseQueue`
+### Toast
+Modern notification system with:
+- Auto-dismiss (3 seconds) or persistent mode
+- Type-based styling (success, error, warning, info)
+- Slide-in animation
+- Manual close option
 
 ## Styling
 
-**Approach:** Vanilla CSS (no Tailwind, no CSS-in-JS)
+**Approach:** Modern CSS with design system
 
-**Files:**
-- `App.css` - Global styles, navigation
-- `Header.css` - Header component styles
-- `Dashboard.css` - Dashboard page styles
-- `Jobs.css` - Jobs page styles
-- `Schedule.css` - Schedule page styles
-- `Admin.css` - Admin page styles
+**Design System:**
+- Dark theme (`#0f0f1a` background)
+- Glassmorphism effects (backdrop blur)
+- HSL-based color palette
+- Inter font family
+- CSS variables for theming
 
-**Design Principles:**
-- Clean, minimal UI
-- Focus on functionality over aesthetics
-- Systems-first (not user-first)
-- Dark mode friendly
+**Key Files:**
+- `index.css` - Global design system
+- `App.css` - Layout and navigation
+- Component-specific CSS files
 
 ## Starting the Client
 
 ```bash
+# Install dependencies
+npm install
+
 # Development (with hot reload)
 npm run dev
 
@@ -148,73 +126,50 @@ npm run preview
 
 ## Technology Stack
 
-- **React** - UI library
-- **Vite** - Build tool (fast, modern)
+- **React 18** - UI library
+- **Vite** - Build tool (fast HMR)
 - **React Router** - Client-side routing
 - **Axios** - HTTP client
-- **Vanilla CSS** - Styling
+- **Socket.IO Client** - WebSocket for real-time updates
+- **Vanilla CSS** - Styling with design system
 
-## Design Philosophy
+## API Integration
 
-This is a **systems-first UI**, not a consumer product:
+**Base URL:** `http://localhost:3000`
 
-✅ **What it is:**
-- Observability tool
-- Admin interface
-- Debugging aid
-- Demo for interviews
+**Key Endpoints:**
+- `GET /status` - System status
+- `GET /instances` - Scheduler/worker instances
+- `GET /tasks` - Job list
+- `GET /tasks/:id` - Job details
+- `POST /tasks` - Create job
+- `GET /events` - System events
+- WebSocket - Real-time updates
 
-❌ **What it's not:**
-- User-friendly consumer app
-- Feature-rich dashboard
-- Production-ready UI
+## Real-Time Features
 
-**Goal:** Prove the distributed systems concepts work, not win design awards.
+### WebSocket Events
+- `system:update` - System status changes
+- `instances:update` - Scheduler/worker updates
+- Auto-reconnection on disconnect
 
-## Key Features
-
-### Real-Time Updates
-
-- System status polls every 2 seconds
-- Job list refreshes on filter change
-- Header updates scheduler state
-
-### Job Templates
-
-Pre-filled templates for common job types:
-- HTTP webhook
-- Shell command
-- Delay/test task
-
-### Execution History
-
-Detailed view of job attempts:
-- Timestamp
-- Status
-- Worker ID
-- Error message (if failed)
-
-### Fault Injection
-
-Testing tools for demonstrating fault tolerance:
-- Kill leader (test failover)
-- Kill worker (test lease recovery)
-- Pause queue (test backpressure)
+### Polling
+- System status: Every 2 seconds
+- Job list: On filter change
+- Event timeline: Every 3 seconds
 
 ## Environment
 
-**API URL:** Configured in `src/api/api.js`
-
+Configure API URL in `src/api/api.js`:
 ```javascript
 const API_BASE_URL = 'http://localhost:3000';
 ```
 
-Change this if API runs on different host/port.
+## Design Philosophy
 
-## Future Enhancements
-
-- WebSocket for real-time updates
-- Job dependency visualization
-- Metrics charts (Prometheus integration)
-- Dark mode toggle
-- Multi-tenancy support
+**Modern, Premium UI** with focus on:
+- ✅ Visual excellence (glassmorphism, gradients, animations)
+- ✅ Real-time observability
+- ✅ Interactive chaos testing
+- ✅ Smooth user experience
+- ✅ Production-ready aesthetics

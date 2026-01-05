@@ -1,0 +1,309 @@
+.system-topology {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-xl);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    margin-bottom: var(--spacing-xl);
+}
+
+.topology-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-lg);
+}
+
+.system-topology h3 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.connection-status {
+    font-size: 0.875rem;
+    font-weight: 700;
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--radius-md);
+    letter-spacing: 0.02em;
+}
+
+.connection-status.connected {
+    color: var(--accent-success);
+    background: rgba(34, 197, 94, 0.15);
+    border: 1px solid var(--accent-success);
+}
+
+.connection-status.disconnected {
+    color: var(--accent-danger);
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid var(--accent-danger);
+}
+
+/* Topology Warning Banner */
+.topology-warning {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-lg);
+    margin: var(--spacing-md) 0;
+    background: rgba(251, 191, 36, 0.15);
+    border: 1px solid rgba(251, 191, 36, 0.5);
+    border-radius: var(--radius-lg);
+    animation: pulse-warning 2s ease-in-out infinite;
+}
+
+.topology-warning .warning-icon {
+    font-size: 1.5rem;
+}
+
+.topology-warning .warning-text {
+    color: #fbbf24;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.topology-warning .warning-text strong {
+    color: #22c55e;
+}
+
+@keyframes pulse-warning {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4);
+    }
+
+    50% {
+        box-shadow: 0 0 0 8px rgba(251, 191, 36, 0);
+    }
+}
+
+/* Topology Controls */
+.topology-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.view-toggle {
+    padding: var(--spacing-xs) var(--spacing-md);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.view-toggle:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.view-toggle.active {
+    background: var(--accent-primary);
+    color: white;
+    border-color: var(--accent-primary);
+}
+
+.topology-diagram {
+    width: 100%;
+    height: auto;
+    max-height: 600px;
+}
+
+.topology-diagram.detailed-view {
+    max-height: 750px;
+}
+
+/* New SRP Node Backgrounds */
+.dispatcher-bg {
+    fill: #f97316;
+    filter: drop-shadow(0 0 10px rgba(249, 115, 22, 0.5));
+}
+
+.recovery-bg {
+    fill: #8b5cf6;
+    filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.5));
+}
+
+.monitor-bg {
+    fill: #ec4899;
+    filter: drop-shadow(0 0 10px rgba(236, 72, 153, 0.5));
+}
+
+.db-bg {
+    fill: #3b82f6;
+    filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.5));
+}
+
+.etcd-bg {
+    fill: #14b8a6;
+    filter: drop-shadow(0 0 10px rgba(20, 184, 166, 0.5));
+}
+
+/* Smooth transitions for topology changes */
+.worker-node,
+.scheduler-node,
+.redis-node {
+    transition: all 0.5s ease-in-out;
+}
+
+.connection-line {
+    transition: all 0.5s ease-in-out;
+}
+
+/* Connection Lines */
+.connection-line {
+    stroke: var(--glass-border);
+    stroke-width: 2;
+    fill: none;
+    opacity: 0.6;
+}
+
+/* Node Backgrounds */
+.node-bg {
+    stroke: var(--text-primary);
+    stroke-width: 2;
+}
+
+.leader-bg {
+    fill: var(--accent-success);
+    filter: drop-shadow(0 0 10px rgba(34, 197, 94, 0.5));
+}
+
+.standby-bg {
+    fill: #6b7280;
+    filter: drop-shadow(0 0 8px rgba(107, 114, 128, 0.4));
+}
+
+.redis-bg {
+    fill: var(--accent-danger);
+    filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.5));
+}
+
+.idle-bg {
+    fill: var(--accent-primary);
+    filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.4));
+}
+
+.executing-bg {
+    fill: var(--accent-warning);
+    animation: glow 0.5s ease-in-out infinite alternate;
+    filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.6));
+}
+
+/* Redis Pulsing Animation */
+.redis-bg.pulsing {
+    animation: pulse-redis 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-redis {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+}
+
+/* Worker Glow Animation */
+@keyframes glow {
+    from {
+        filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.5));
+    }
+
+    to {
+        filter: drop-shadow(0 0 16px rgba(251, 191, 36, 0.9));
+    }
+}
+
+/* Text Styles */
+.node-title {
+    font-size: 14px;
+    font-weight: 700;
+    fill: #0f0f1a;
+    text-anchor: middle;
+}
+
+.node-id {
+    font-size: 10px;
+    font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+    fill: #0f0f1a;
+    text-anchor: middle;
+}
+
+.node-status {
+    font-size: 11px;
+    fill: #0f0f1a;
+    text-anchor: middle;
+    font-weight: 600;
+}
+
+.node-pid {
+    font-size: 10px;
+    fill: #1a1a2e;
+    text-anchor: middle;
+}
+
+.node-queue {
+    font-size: 16px;
+    font-weight: 700;
+    fill: #0f0f1a;
+    text-anchor: middle;
+}
+
+/* Task Flow Animation */
+.task-flow {
+    opacity: 0.8;
+}
+
+/* Loading State */
+.topology-loading {
+    padding: var(--spacing-2xl);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .system-topology {
+        padding: var(--spacing-md);
+    }
+
+    .topology-diagram {
+        max-height: 400px;
+    }
+}
+
+/* Hover Effects */
+.scheduler-node:hover .node-bg,
+.worker-node:hover .node-bg,
+.redis-node:hover .node-bg {
+    stroke-width: 3;
+    cursor: pointer;
+    filter: brightness(1.1);
+}
+
+/* Status Indicators */
+.scheduler-node.leader .node-bg {
+    stroke: var(--accent-success);
+    stroke-width: 3;
+}
+
+.worker-node.executing .node-bg {
+    stroke: var(--accent-warning);
+    stroke-width: 3;
+}

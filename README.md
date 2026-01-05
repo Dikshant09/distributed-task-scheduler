@@ -1,73 +1,183 @@
 # Distributed Task Scheduler
 
-A fault-tolerant distributed task scheduler built with Node.js, React, PostgreSQL, Redis, and Etcd.
+A distributed task scheduler with **real-time visualization** designed as an interactive demo and learning tool for distributed systems concepts.
 
-## Features
-- **Leader Election**: Etcd-based consensus.
-- **Fault Tolerance**: Worker heartbeats, automatic task reassignment, retry exponential backoff.
-- **Distributed Queue**: Redis Streams for task delivery.
-- **Idempotency**: Ensures exactly-once (or at-least-once with dedup) execution.
+> 🎯 **Purpose**: This is an educational visualizer, not a production scheduler. Built to demonstrate leader election, lease-based execution, fault tolerance, and automatic failure recovery—concepts you can see live in the browser.
 
-## Prerequisities
-- Docker & Docker Compose
-- Node.js (for local dev)
+## ✨ Features
 
-## Quick Start
-1. Start Infrastructure & Services:
+- **🎯 Real-time Topology Visualization** - Interactive system diagram showing schedulers, workers, and task flow
+- **👑 Leader Election** - Etcd-based consensus with automatic failover
+- **💪 Fault Tolerance** - Worker heartbeats, automatic task reassignment, exponential backoff retry
+- **📦 Distributed Queue** - Redis-based task delivery with guaranteed processing
+- **🔄 Idempotency** - Ensures exactly-once (or at-least-once with dedup) execution
+- **🧪 Chaos Engineering** - Built-in failure simulation for testing resilience
+- **📊 Event Timeline** - Real-time system event tracking and visualization
+- **🎨 Modern UI** - Dark theme with glassmorphism and smooth animations
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 16+
+- PostgreSQL 14
+- Redis
+- Etcd
+
+Install via Homebrew (macOS):
+```bash
+brew install postgresql@14 redis etcd
+brew services start postgresql@14
+brew services start redis
+brew services start etcd
+```
+
+### Installation
+
+1. **Clone and install dependencies:**
    ```bash
-   docker-compose up --build --scale worker=3 --scale scheduler=3
+   git clone <repository-url>
+   cd distributed-task-scheduler
+   cd Server && npm install
+   cd ../Client && npm install
    ```
-2. Start Client (Local):
+
+2. **Set up database:**
    ```bash
-   cd Client
-   npm install
-   npm run dev
+   createdb -U user task_scheduler
+   psql -U user -d task_scheduler -f Server/db/schema.sql
    ```
-3. Open Dashboard at `http://localhost:5173`.
+
+3. **Configure environment:**
+   ```bash
+   cp .env.example .env
+   # Edit .env to customize instance counts (optional)
+   ```
+
+4. **Start the system:**
+   ```bash
+   ./run.sh
+   ```
+
+5. **Access the UI:**
+   - Dashboard: `http://localhost:5173`
+   - API: `http://localhost:3000`
+
+## ⚙️ Configuration
+
+Configure the number of scheduler and worker instances via `.env`:
 
 ```bash
-./run.sh
+# Instance Configuration
+NUM_SCHEDULERS=3  # Number of scheduler instances (default: 3)
+NUM_WORKERS=5     # Number of worker instances (max: 5, enforced)
 ```
 
-Access the UI at `http://localhost:5173`
+**Run modes:**
+```bash
+./run.sh          # Development mode (with auto-restart)
+./run_prod.sh     # Production mode (no auto-restart, true fault tolerance)
+```
 
-### Leader Election Failover Demo
+**Recommendations:**
+- **Development**: 2-3 schedulers, 3-5 workers
+- **Production**: 3-5 schedulers, 5 workers (hard cap)
+- **Minimal**: 2 schedulers, 2 workers (for testing)
 
-To demonstrate leader election and automatic failover:
+## 📁 Data Storage
+
+### Local Storage Locations (macOS with Homebrew):
+
+| Data Type | Storage | Location | Size | Persistence |
+|-----------|---------|----------|------|-------------|
+| **Jobs/Tasks** | PostgreSQL | `/opt/homebrew/var/postgresql@14/` | ~67MB | ✅ Permanent |
+| **Workers** | PostgreSQL | `/opt/homebrew/var/postgresql@14/` | ~67MB | ✅ Permanent |
+| **Events** | Redis | `/opt/homebrew/var/db/redis` | ~24KB | ⚠️ Volatile* |
+| **Queue** | Redis | `/opt/homebrew/var/db/redis` | ~24KB | ⚠️ Volatile* |
+| **Scheduler State** | File | `.scheduler-state.json` | <1KB | ✅ Permanent |
+| **Logs** | Files | `logs/*.log` | Varies | ✅ Permanent |
+
+*Redis data is in-memory by default. Events are cleared on restart, which is acceptable for demo/development use.
+
+### Check Data Sizes:
+```bash
+du -sh /opt/homebrew/var/postgresql@14/  # PostgreSQL
+du -sh /opt/homebrew/var/db/redis        # Redis
+```
+
+## 🧪 Failure Simulation
+
+The Dashboard includes built-in chaos engineering controls:
+
+- **❌ Kill Leader** - Triggers leader election and failover
+- **❌ Kill Random Worker** - Tests task reassignment
+- **⏸️ Pause Queue** - Simulates Redis outage (10s)
+- **🛑 Disable Scheduler** - Stops task dispatching
+
+All actions are logged in the Event Timeline with real-time updates.
+
+## 🏗️ Architecture
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  Scheduler  │────▶│    Redis    │────▶│   Worker    │
+│  (Leader)   │     │    Queue    │     │  (Pool)     │
+└─────────────┘     └─────────────┘     └─────────────┘
+       │                                        │
+       ▼                                        ▼
+┌─────────────┐                        ┌─────────────┐
+│ PostgreSQL  │◀───────────────────────│  Heartbeat  │
+│  (Tasks)    │                        │  Monitor    │
+└─────────────┘                        └─────────────┘
+```
+
+**Components:**
+- **API Server** - Accepts jobs, writes to PostgreSQL
+- **Scheduler** - Leader watches DB, dispatches tasks to Redis queue
+- **Worker Pool** - Consumes from Redis, acquires DB lease, executes tasks
+- **Heartbeat Monitor** - Tracks worker health, triggers reassignment on failure
+
+## 🛑 Stop Services
 
 ```bash
-# Stop normal services
 ./stop.sh
-
-# Start with 2 scheduler instances
-./demo-leader-election.sh
 ```
 
-**What this does:**
-- Starts 2 scheduler instances (one leader, one standby)
-- When you click "Kill Leader" in the UI, the standby automatically becomes leader
-- System continues operating without interruption
-
-**Check leader status:**
+Or manually:
 ```bash
-tail -f logs/scheduler1.log | grep -i leader
-tail -f logs/scheduler2.log | grep -i leader
+pkill -f 'node.*server.js|node.*scheduler|node.*worker|vite'
 ```
 
-See [docs/LEADER_ELECTION_DEMO.md](docs/LEADER_ELECTION_DEMO.md) for details.
+## 📊 Monitoring
 
-## Stop Services
-
+**View logs:**
 ```bash
-./stop.sh
+tail -f logs/api.log
+tail -f logs/scheduler1.log
+tail -f logs/worker1.log
 ```
 
-## Architecture
-- **API**: Accepts tasks, writes to DB.
-- **Scheduler**: Leader watches DB, dispatches to Redis.
-- **Worker**: Consumes from Redis, acquires DB lease, executes.
+**Check system status:**
+```bash
+curl http://localhost:3000/instances | jq
+curl http://localhost:3000/status | jq
+```
 
-## Verification / Chaos
-Run scripts in `scripts/`:
-- `./scripts/kill-leader.sh`: Kills active scheduler.
-- `./scripts/kill-worker.sh`: Kills random worker.
+**View events:**
+```bash
+curl http://localhost:3000/events | jq
+```
+
+## 🎯 Use Cases
+
+- **Demo/Visualizer** - Interactive demonstration of distributed systems concepts
+- **Learning Tool** - Understand leader election, fault tolerance, and task scheduling
+- **Chaos Testing** - Test resilience and recovery mechanisms
+- **Development** - Build and test distributed task processing systems
+
+## 📝 License
+
+MIT
+
+## 🤝 Contributing
+
+Contributions welcome! This project demonstrates distributed systems concepts and is ideal for educational purposes or as a foundation for production task schedulers.

@@ -1,52 +1,84 @@
 import React, { useState, useEffect } from 'react';
-import { getSystemStatus, killLeader, killWorker, pauseQueue, disableScheduler } from '../api/api';
+import { getSystemStatus, getInstances, killLeader, killWorker, killWorkerMidTask, pauseQueue, networkDelay, disableScheduler, resetInstances } from '../api/api';
+import EventTimeline from '../components/EventTimeline';
+import Toast from '../components/Toast';
 import './Dashboard.css';
+import SystemTopology from '../components/SystemTopology';
 
 function Dashboard() {
     const [status, setStatus] = useState(null);
+    const [instances, setInstances] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [toast, setToast] = useState(null);
 
     useEffect(() => {
-        const fetchStatus = async () => {
+        const fetchData = async () => {
             try {
-                const res = await getSystemStatus();
-                setStatus(res.data.data);
+                const [statusRes, instancesRes] = await Promise.all([
+                    getSystemStatus(),
+                    getInstances()
+                ]);
+                setStatus(statusRes.data.data);
+                setInstances(instancesRes.data.data);
                 setLoading(false);
             } catch (err) {
-                console.error('Failed to fetch status', err);
+                console.error('Failed to fetch data', err);
                 setLoading(false);
             }
         };
 
-        fetchStatus();
-        const interval = setInterval(fetchStatus, 2000);
+        fetchData();
+        const interval = setInterval(fetchData, 2000);
         return () => clearInterval(interval);
     }, []);
 
+
+    const showToast = (message, type = 'info', persistent = false) => {
+        setToast({ message, type, persistent });
+    };
+
     const handleFault = async (faultType) => {
         try {
+            let response;
             switch (faultType) {
                 case 'kill-leader':
-                    await killLeader();
-                    alert('Leader process will terminate');
+                    response = await killLeader();
+                    showToast(response.data.message, 'warning');
                     break;
                 case 'kill-worker':
-                    await killWorker();
-                    alert('Worker kill simulated');
+                    response = await killWorker();
+                    showToast(response.data.message, 'warning');
                     break;
                 case 'pause-queue':
-                    await pauseQueue(10000);
-                    alert('Queue paused for 10 seconds');
+                    response = await pauseQueue(10000);
+                    showToast('Queue paused for 10 seconds', 'info');
+                    break;
+                case 'kill-worker-mid-task':
+                    response = await killWorkerMidTask(3000);
+                    showToast('Long task created. Worker will be killed in 3s. Watch recovery!', 'warning');
                     break;
                 case 'disable-scheduler':
-                    await disableScheduler();
-                    alert('Scheduler disabled');
+                    response = await disableScheduler();
+                    showToast(
+                        '⚠️ Scheduler Disabled - Go to Admin panel to re-enable scheduling',
+                        'warning',
+                        true // persistent - requires manual close
+                    );
+                    break;
+                case 'network-delay':
+                    response = await networkDelay(5000);
+                    showToast('Network delay simulated for 5 seconds (tasks accumulate in READY)', 'info');
+                    break;
+                case 'reset-instances':
+                    showToast('Restoring instances to target counts...', 'info');
+                    response = await resetInstances();
+                    showToast(response.data.message, 'success');
                     break;
                 default:
                     break;
             }
         } catch (err) {
-            alert(`Fault injection failed: ${err.message}`);
+            showToast(err.response?.data?.message || err.message, 'error');
         }
     };
 
@@ -57,21 +89,93 @@ function Dashboard() {
         <div className="dashboard">
             <h2>System Health</h2>
 
+            {/* System Topology Visualization */}
+            <SystemTopology />
+
+            {/* Failure Simulation - Positioned next to topology for visual context */}
+            <h3>🧪 Failure Simulation</h3>
+            <div className="fault-buttons">
+                <button className="fault-btn danger" onClick={() => handleFault('kill-leader')}>
+                    ❌ Kill Leader
+                </button>
+                <button className="fault-btn danger" onClick={() => handleFault('kill-worker')}>
+                    ❌ Kill Random Worker
+                </button>
+                <button className="fault-btn danger" onClick={() => handleFault('kill-worker-mid-task')}>
+                    💥 Kill Worker Mid-Task
+                </button>
+                <button className="fault-btn warning" onClick={() => handleFault('pause-queue')}>
+                    ⏸️ Pause Queue (10s)
+                </button>
+                <button className="fault-btn warning" onClick={() => handleFault('network-delay')}>
+                    🌐 Network Delay (5s)
+                </button>
+                <button className="fault-btn warning" onClick={() => handleFault('disable-scheduler')}>
+                    🛑 Disable Scheduler
+                </button>
+                <button className="fault-btn success" onClick={() => handleFault('reset-instances')}>
+                    🔄 Reset Instances
+                </button>
+            </div>
+
+            {/* Scheduler Instances */}
+            {instances && (
+                <div className="instances-section">
+                    <h3>Scheduler Instances ({instances.schedulers.length})</h3>
+                    <div className="instances-grid">
+                        {instances.schedulers.map(scheduler => (
+                            <div key={scheduler.id} className={`instance-card ${scheduler.isLeader ? 'leader' : 'standby'}`}>
+                                <div className="instance-header">
+                                    <span className="instance-id">{scheduler.id}</span>
+                                    {scheduler.isLeader && <span className="leader-badge">👑 Leader</span>}
+                                    {!scheduler.isLeader && <span className="standby-badge">⏸️ Standby</span>}
+                                </div>
+                                <div className="instance-details">
+                                    <div>PID: {scheduler.pid}</div>
+                                    <div>Started: {new Date(scheduler.startedAt).toLocaleTimeString()}</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Worker Instances */}
+            {instances && (
+                <div className="instances-section">
+                    <h3>Worker Instances ({instances.workers.length})</h3>
+                    <div className="instances-grid">
+                        {instances.workers.map(worker => (
+                            <div key={worker.id} className={`instance-card worker ${worker.status === 'executing' ? 'executing' : ''}`}>
+                                <div className="instance-header">
+                                    <span className="instance-id">{worker.id}</span>
+                                    {worker.status === 'executing' ? (
+                                        <span className="worker-badge executing">⚙️ Executing</span>
+                                    ) : (
+                                        <span className="worker-badge">💤 Idle</span>
+                                    )}
+                                </div>
+                                <div className="instance-details">
+                                    <div>PID: {worker.pid}</div>
+                                    {worker.currentTaskId && (
+                                        <div className="current-task">
+                                            Task: <code>{worker.currentTaskId.substring(0, 8)}...</code>
+                                        </div>
+                                    )}
+                                    <div>Started: {new Date(worker.startedAt).toLocaleTimeString()}</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* System Metrics */}
+            <h3>System Metrics</h3>
             <div className="metrics-grid">
                 <div className="metric-card">
                     <div className="metric-label">Scheduler State</div>
                     <div className="metric-value">{status.scheduler.enabled ? 'Enabled' : 'Disabled'}</div>
-                </div>
-
-                <div className="metric-card">
-                    <div className="metric-label">Leader ID</div>
-                    <div className="metric-value">{status.scheduler.leaderId}</div>
-                </div>
-
-                <div className="metric-card">
-                    <div className="metric-label">Leader Uptime</div>
-                    <div className="metric-value">{status.scheduler.leaderUptime}s</div>
                 </div>
 
                 <div className="metric-card">
@@ -114,22 +218,19 @@ function Dashboard() {
                 </div>
             </div>
 
-            {/* Fault Simulation */}
-            <h3>Failure Simulation</h3>
-            <div className="fault-buttons">
-                <button className="fault-btn danger" onClick={() => handleFault('kill-leader')}>
-                    ❌ Kill Leader
-                </button>
-                <button className="fault-btn danger" onClick={() => handleFault('kill-worker')}>
-                    ❌ Kill Worker
-                </button>
-                <button className="fault-btn warning" onClick={() => handleFault('pause-queue')}>
-                    ⏸️ Pause Queue (10s)
-                </button>
-                <button className="fault-btn warning" onClick={() => handleFault('disable-scheduler')}>
-                    🛑 Disable Scheduler
-                </button>
-            </div>
+            {/* Event Timeline - Comprehensive activity log */}
+            <h3>📋 Recent System Events</h3>
+            <EventTimeline scope="dashboard" />
+
+            {/* Toast Notifications */}
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    persistent={toast.persistent}
+                    onClose={() => setToast(null)}
+                />
+            )}
         </div>
     );
 }
