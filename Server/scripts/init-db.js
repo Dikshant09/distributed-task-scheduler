@@ -14,6 +14,10 @@ const initDatabase = async () => {
         await db.query('DELETE FROM process_instances');
         logger.info('Cleared process_instances');
 
+        // Clear stale workers table (heartbeat tracking)
+        await db.query('DELETE FROM workers');
+        logger.info('Cleared workers');
+
         // Clear all tasks and executions for fresh demo
         await db.query('DELETE FROM task_executions');
         await db.query('DELETE FROM tasks');
