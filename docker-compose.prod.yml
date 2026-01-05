@@ -3,6 +3,8 @@ services:
     build:
       context: ./Client
       dockerfile: Dockerfile.prod
+      args:
+        VITE_API_URL: /api  # Nginx proxies /api to the API container
     ports:
       - "80:80"
     mem_limit: 64m
