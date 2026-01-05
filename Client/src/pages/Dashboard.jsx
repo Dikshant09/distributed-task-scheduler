@@ -131,7 +131,6 @@ function Dashboard() {
                                     {!scheduler.isLeader && <span className="standby-badge">⏸️ Standby</span>}
                                 </div>
                                 <div className="instance-details">
-                                    <div>PID: {scheduler.pid}</div>
                                     <div>Started: {new Date(scheduler.startedAt).toLocaleTimeString()}</div>
                                 </div>
                             </div>
@@ -156,7 +155,6 @@ function Dashboard() {
                                     )}
                                 </div>
                                 <div className="instance-details">
-                                    <div>PID: {worker.pid}</div>
                                     {worker.currentTaskId && (
                                         <div className="current-task">
                                             Task: <code>{worker.currentTaskId.substring(0, 8)}...</code>

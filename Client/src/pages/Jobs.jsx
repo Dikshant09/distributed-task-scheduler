@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getTasks, getTaskById, runTaskNow } from '../api/api';
+import { getTasks, runTaskNow } from '../api/api';
+import Toast from '../components/Toast';
 import './Jobs.css';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,6 +9,7 @@ function Jobs() {
     const [tasks, setTasks] = useState([]);
     const [filter, setFilter] = useState('');
     const [loading, setLoading] = useState(true);
+    const [toast, setToast] = useState(null);
 
     useEffect(() => {
         const fetchTasks = async () => {
@@ -27,6 +29,10 @@ function Jobs() {
         return () => clearInterval(interval);
     }, [filter]);
 
+    const showToast = (message, type = 'info') => {
+        setToast({ message, type });
+    };
+
     const handleRowClick = (taskId) => {
         navigate(`/jobs/${taskId}`);
     };
@@ -34,9 +40,9 @@ function Jobs() {
     const handleRunNow = async (taskId) => {
         try {
             await runTaskNow(taskId);
-            alert('Task scheduled to run immediately');
+            showToast('Task scheduled to run immediately', 'success');
         } catch (err) {
-            alert(`Failed to run task: ${err.message}`);
+            showToast(err.response?.data?.message || `Failed to run task: ${err.message}`, 'error');
         }
     };
 
@@ -110,6 +116,15 @@ function Jobs() {
                 </div>
 
             </div>
+
+            {/* Toast Notifications */}
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                />
+            )}
         </div>
     );
 }

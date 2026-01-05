@@ -31,7 +31,7 @@ function Header() {
                 <div className="status-indicator">
                     <span className={`status-dot ${schedulerEnabled ? 'enabled' : 'disabled'}`}></span>
                     <span className="status-text">
-                        {schedulerEnabled ? ' Enabled' : 'Disabled'}
+                        {schedulerEnabled ? 'Enabled' : 'Disabled'}
                     </span>
                 </div>
                 <div className="leader-info">

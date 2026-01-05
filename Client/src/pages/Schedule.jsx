@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { getTasks, createTask, runTaskNow } from '../api/api';
+import Toast from '../components/Toast';
 import './Schedule.css';
 
 function Schedule() {
     const [tasks, setTasks] = useState([]);
+    const [toast, setToast] = useState(null);
     const [formData, setFormData] = useState({
         name: '',
         type: 'DELAY',
@@ -27,6 +29,10 @@ function Schedule() {
         }
     };
 
+    const showToast = (message, type = 'info') => {
+        setToast({ message, type });
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -40,11 +46,20 @@ function Schedule() {
                 idempotencyKey: `client-${Date.now()}`
             });
 
-            alert('Task created successfully');
+            showToast('Task created successfully', 'success');
             setFormData({ ...formData, payload: '{}' });
             fetchTasks();
         } catch (err) {
-            alert(`Failed to create task: ${err.message}`);
+            showToast(err.response?.data?.message || `Failed to create task: ${err.message}`, 'error');
+        }
+    };
+
+    const handleRunNow = async (taskId) => {
+        try {
+            await runTaskNow(taskId);
+            showToast('Task scheduled to run immediately', 'success');
+        } catch (err) {
+            showToast(err.response?.data?.message || `Failed to run task: ${err.message}`, 'error');
         }
     };
 
@@ -148,7 +163,7 @@ function Schedule() {
                                     <td>
                                         <button
                                             className="btn-small"
-                                            onClick={() => runTaskNow(task.id).then(() => alert('Running now'))}
+                                            onClick={() => handleRunNow(task.id)}
                                         >
                                             Run Now
                                         </button>
@@ -159,6 +174,15 @@ function Schedule() {
                     </table>
                 </div>
             </div>
+
+            {/* Toast Notifications */}
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                />
+            )}
         </div>
     );
 }

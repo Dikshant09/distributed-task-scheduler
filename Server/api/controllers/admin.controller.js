@@ -173,23 +173,9 @@ const pauseQueue = async (req, res, next) => {
             reason: 'admin_fault_injection'
         });
 
-        // Also stop local dispatcher if running in V1 mode (same process)
-        try {
-            dispatcher.stop();
-        } catch (e) {
-            // Ignore - dispatcher may not be running in this process (V2 mode)
-        }
-
         setTimeout(async () => {
             logger.info('Resuming queue after fault injection');
             await schedulerState.setQueuePaused(false);
-
-            // Also start local dispatcher if running in V1 mode
-            try {
-                dispatcher.start();
-            } catch (e) {
-                // Ignore - dispatcher may not be running in this process (V2 mode)
-            }
 
             eventLogger.log('QUEUE_RESUMED', 'Queue resumed after fault injection', {
                 duration,

@@ -8,6 +8,16 @@ const eventLogger = require('../../common/event-logger');
 const createJob = async (req, res, next) => {
     try {
         const { type, payload, scheduledAt, idempotencyKey } = req.body;
+        const schedulerState = require('../../common/scheduler-state');
+
+        // Check if scheduler is enabled
+        const isEnabled = await schedulerState.isEnabled();
+        if (!isEnabled) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Scheduler is disabled. Enable the scheduler first to create jobs.'
+            });
+        }
 
         const finalIdempotencyKey = idempotencyKey || generateId();
 
@@ -89,11 +99,26 @@ const getTasks = async (req, res, next) => {
 const runNow = async (req, res, next) => {
     try {
         const { id } = req.params;
+        const schedulerState = require('../../common/scheduler-state');
 
-        // Update scheduled_at to now
+        // Check if scheduler is enabled
+        const isEnabled = await schedulerState.isEnabled();
+        if (!isEnabled) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Scheduler is disabled. Enable the scheduler first to run jobs.'
+            });
+        }
+
+        // Update task to run immediately - reset all execution state for re-run
         const query = `
             UPDATE tasks
-            SET scheduled_at = NOW(), status = 'PENDING'
+            SET scheduled_at = NOW(),
+                status = 'PENDING',
+                attempt = 0,
+                assigned_worker_id = NULL,
+                lease_expiry = NULL,
+                updated_at = NOW()
             WHERE id = $1
             RETURNING *
         `;
@@ -103,6 +128,10 @@ const runNow = async (req, res, next) => {
         if (result.rows.length === 0) {
             throw new NotFoundError(`Task with ID ${id} not found`);
         }
+
+        eventLogger.log('TASK_RUN_NOW', `Task ${id.substring(0, 8)} scheduled to run immediately`, {
+            taskId: id
+        });
 
         res.status(200).json({
             status: 'success',
