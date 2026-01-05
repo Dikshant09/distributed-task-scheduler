@@ -2,40 +2,120 @@
 
 A distributed task scheduler with **real-time visualization** designed as an interactive demo and learning tool for distributed systems concepts.
 
+![System Topology](https://raw.githubusercontent.com/Dikshant09/distributed-task-scheduler/main/docs/assets/topology-preview.png)
+
 > 🎯 **Purpose**: This is an educational visualizer, not a production scheduler. Built to demonstrate leader election, lease-based execution, fault tolerance, and automatic failure recovery—concepts you can see live in the browser.
 
 ## ✨ Features
 
-- **🎯 Real-time Topology Visualization** - Interactive system diagram showing schedulers, workers, and task flow
-- **👑 Leader Election** - Etcd-based consensus with automatic failover
+- **🎯 Real-time Visualization** - Interactive system diagram showing schedulers, workers, and task flow (Yellow/Blue balls)
+- **👑 Leader Election** - Etcd-based consensus with automatic failover (SRP Architecture)
 - **💪 Fault Tolerance** - Worker heartbeats, automatic task reassignment, exponential backoff retry
-- **📦 Distributed Queue** - Redis-based task delivery with guaranteed processing
+- **📦 Distributed Queue** - Redis Streams based task delivery with Consumer Groups
 - **🔄 Idempotency** - Ensures exactly-once (or at-least-once with dedup) execution
-- **🧪 Chaos Engineering** - Built-in failure simulation for testing resilience
+- **🧪 Chaos Engineering** - Built-in failure simulation (Kill Leader, Kill Worker, Pause Queue)
 - **📊 Event Timeline** - Real-time system event tracking and visualization
 - **🎨 Modern UI** - Dark theme with glassmorphism and smooth animations
 
+## 🏗️ Architecture (SRP)
+
+The system follows the **Single Responsibility Principle (SRP)** by splitting the monolithic scheduler into dedicated microservices:
+
+```
+┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+│  API Server  │───▶│   Postgres   │───▶│ Scheduler    │
+│  (Ingestion) │    │ Source Truth │    │ Coordinator  │
+└──────────────┘    └──────────────┘    └──────────────┘
+       │                                        │
+       ▼                                        ▼
+┌──────────────┐    ┌─────────────┐     ┌──────────────┐
+│  Dispatcher  │───▶│ Redis Queue │────▶│    Worker    │
+│  (Stateless) │    │ (Streams)   │     │    Pool      │
+└──────────────┘    └─────────────┘     └──────────────┘
+                                                │
+                                                ▼
+                                        ┌──────────────┐
+                                        │ Recovery Svc │
+                                        │ (Monitor)    │
+                                        └──────────────┘
+```
+
+**Components:**
+- **API Server** - Accepts jobs, writes to PostgreSQL, serves WebSocket for real-time UI
+- **Scheduler Coordinator** - Handles leader election via Etcd
+- **Dispatcher** - Stateless service that pushes pending tasks from Postgres to Redis
+- **Worker** - Consumes tasks from Redis, executes them, and reports status
+- **Recovery** - Monitors worker heartbeats and reclaims stalled tasks (Lease mechanism)
+- **Cleanup** - Removes expired sessions and old data
+
+### Data Flow
+
+```
+User → API → PostgreSQL → Dispatcher → Redis → Worker → PostgreSQL
+                ↑                                    ↓
+         Scheduler Coordinator              Heartbeat Monitor
+         (Leader Election)                  (Recovery Service)
+```
+
+---
+
 ## 🚀 Quick Start
 
-### Prerequisites
-- Node.js 16+
-- PostgreSQL 14
+### Option 1: Docker Compose (Recommended)
+
+The easiest way to run the full system (frontend + backend + databases).
+
+#### Prerequisites
+- Docker & Docker Compose
+
+#### Development Mode
+```bash
+# Clone the repository
+git clone https://github.com/Dikshant09/distributed-task-scheduler.git
+cd distributed-task-scheduler
+
+# Start all services (scales: 3 Schedulers, 5 Workers)
+docker compose up -d --scale scheduler=3 --scale worker=5
+
+# Access the dashboard
+# http://localhost:5173
+```
+
+#### Production Mode
+```bash
+# Set secure DB password
+cp .env.prod.example .env.prod
+# Edit .env.prod to set a secure password
+
+# Deploy with production configuration
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build --scale scheduler=3 --scale worker=5
+
+# Access via http://localhost (port 80)
+```
+
+### Option 2: Local Installation (Manual)
+
+For development without Docker.
+
+#### Prerequisites
+- Node.js 18+
+- PostgreSQL 15+
 - Redis
 - Etcd
 
-Install via Homebrew (macOS):
+**Install via Homebrew (macOS):**
 ```bash
-brew install postgresql@14 redis etcd
-brew services start postgresql@14
+brew install postgresql@15 redis etcd
+brew services start postgresql@15
 brew services start redis
 brew services start etcd
 ```
 
-### Installation
+#### Installation
 
 1. **Clone and install dependencies:**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/Dikshant09/distributed-task-scheduler.git
    cd distributed-task-scheduler
    cd Server && npm install
    cd ../Client && npm install
@@ -44,135 +124,259 @@ brew services start etcd
 2. **Set up database:**
    ```bash
    createdb -U user task_scheduler
-   psql -U user -d task_scheduler -f Server/db/schema.sql
+   psql -U user -d task_scheduler -f Server/db/migrations/001_init.sql
    ```
 
 3. **Configure environment:**
    ```bash
    cp .env.example .env
-   # Edit .env to customize instance counts (optional)
+   # Edit .env to match your local setup
    ```
 
-4. **Start the system:**
+4. **Start services individually:**
    ```bash
-   ./run.sh
+   # Terminal 1: API
+   cd Server && npm run dev
+   
+   # Terminal 2: Frontend
+   cd Client && npm run dev
+   
+   # Terminal 3: Scheduler
+   node Server/services/scheduler-coordinator/index.js
+   
+   # Terminal 4: Worker
+   node Server/worker/index.js
    ```
 
 5. **Access the UI:**
    - Dashboard: `http://localhost:5173`
    - API: `http://localhost:3000`
 
+---
+
+## 🐳 Deployment
+
+### Docker Compose Architecture
+
+| Service | Image/Build | Port | Purpose |
+|---------|------------|------|---------|
+| **nginx** | Client/Dockerfile.prod | 80 | Reverse proxy, static files |
+| **api** | Server/Dockerfile | 3000 | REST API + WebSocket |
+| **scheduler** | Server (scaled) | - | Leader election, coordination |
+| **worker** | Server (scaled) | - | Task execution |
+| **dispatcher** | Server | - | Task dispatching |
+| **recovery** | Server | - | Heartbeat monitoring |
+| **cleanup** | Server | - | Session cleanup |
+| **postgres** | postgres:15-alpine | 5432 | Task storage |
+| **redis** | redis:alpine | 6379 | Queue + Events |
+| **etcd** | quay.io/coreos/etcd | 2379 | Leader election |
+
+### Nginx Reverse Proxy
+
+The production setup uses Nginx to:
+- Serve the React SPA static files
+- Proxy `/api/*` requests to the backend API
+- Proxy `/socket.io/*` for WebSocket connections
+- Enable gzip compression
+
+**Configuration:** `Client/nginx.conf`
+
+```nginx
+# Key routing
+location /api/ {
+    proxy_pass http://api:3000/;
+}
+
+location /socket.io/ {
+    proxy_pass http://api:3000/socket.io/;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+}
+```
+
+### Azure VM Deployment
+
+A deployment script is provided for Azure VMs (or any Linux server with Docker):
+
+```bash
+# SSH into your VM
+ssh user@your-vm-ip
+
+# Clone and deploy
+git clone https://github.com/Dikshant09/distributed-task-scheduler.git
+cd distributed-task-scheduler
+
+# Run deployment script
+chmod +x deploy.sh
+./deploy.sh
+```
+
+**What `deploy.sh` does:**
+1. Creates `.env.prod` with a random secure password (if not exists)
+2. Builds Docker images
+3. Starts services with scaling (3 schedulers, 5 workers)
+4. Runs health checks
+5. Displays access URL
+
+**Useful deployment commands:**
+```bash
+# View logs
+docker compose -f docker-compose.prod.yml logs -f
+
+# Restart services
+docker compose -f docker-compose.prod.yml restart
+
+# Stop all services
+docker compose -f docker-compose.prod.yml down
+
+# Scale workers
+docker compose -f docker-compose.prod.yml up -d --scale worker=10
+```
+
+---
+
 ## ⚙️ Configuration
 
-Configure the number of scheduler and worker instances via `.env`:
+### Environment Variables
 
-```bash
-# Instance Configuration
-NUM_SCHEDULERS=3  # Number of scheduler instances (default: 3)
-NUM_WORKERS=5     # Number of worker instances (max: 5, enforced)
-```
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `NODE_ENV` | Environment mode | `development` |
+| `PORT` | API server port | `3000` |
+| `DATABASE_URL` | PostgreSQL connection | `postgres://...` |
+| `REDIS_URL` | Redis connection | `redis://...` |
+| `ETCD_HOSTS` | Etcd connection | `http://etcd:2379` |
+| `DB_PASSWORD` | Database password (prod) | - |
+| `MAX_SESSIONS` | Max concurrent sessions | `50` |
+| `LEADER_ELECTION_TTL` | Leader lease TTL (seconds) | `15` |
+| `DISPATCH_INTERVAL_MS` | Task dispatch interval | `1000` |
+| `MIN_EXECUTION_DELAY_MS` | Artificial delay for demo | `3000` |
+| `NUM_SCHEDULERS` | Scheduler instances | `3` |
+| `NUM_WORKERS` | Worker instances (max: 5) | `5` |
 
-**Run modes:**
-```bash
-./run.sh          # Development mode (with auto-restart)
-./run_prod.sh     # Production mode (no auto-restart, true fault tolerance)
-```
+### Configuration Files
 
-**Recommendations:**
-- **Development**: 2-3 schedulers, 3-5 workers
-- **Production**: 3-5 schedulers, 5 workers (hard cap)
-- **Minimal**: 2 schedulers, 2 workers (for testing)
+| File | Purpose |
+|------|---------|
+| `.env` | Development environment |
+| `.env.prod` | Production environment |
+| `docker-compose.yml` | Development Docker setup |
+| `docker-compose.prod.yml` | Production Docker setup |
+| `Client/nginx.conf` | Nginx reverse proxy config |
+
+---
 
 ## 📁 Data Storage
 
-### Local Storage Locations (macOS with Homebrew):
+### Docker Volumes
 
-| Data Type | Storage | Location | Size | Persistence |
-|-----------|---------|----------|------|-------------|
-| **Jobs/Tasks** | PostgreSQL | `/opt/homebrew/var/postgresql@14/` | ~67MB | ✅ Permanent |
-| **Workers** | PostgreSQL | `/opt/homebrew/var/postgresql@14/` | ~67MB | ✅ Permanent |
-| **Events** | Redis | `/opt/homebrew/var/db/redis` | ~24KB | ⚠️ Volatile* |
-| **Queue** | Redis | `/opt/homebrew/var/db/redis` | ~24KB | ⚠️ Volatile* |
-| **Scheduler State** | File | `.scheduler-state.json` | <1KB | ✅ Permanent |
-| **Logs** | Files | `logs/*.log` | Varies | ✅ Permanent |
+| Volume | Service | Persistence |
+|--------|---------|-------------|
+| `pg_data` | PostgreSQL | ✅ Permanent |
+| `redis_data` | Redis | ⚠️ Volatile on restart |
+| `etcd_data` | Etcd (dev only) | ✅ Permanent |
 
-*Redis data is in-memory by default. Events are cleared on restart, which is acceptable for demo/development use.
+### Local Storage (macOS with Homebrew)
 
-### Check Data Sizes:
-```bash
-du -sh /opt/homebrew/var/postgresql@14/  # PostgreSQL
-du -sh /opt/homebrew/var/db/redis        # Redis
-```
+| Data Type | Storage | Location |
+|-----------|---------|----------|
+| **Jobs/Tasks** | PostgreSQL | `/opt/homebrew/var/postgresql@15/` |
+| **Events** | Redis | `/opt/homebrew/var/db/redis` |
+| **Logs** | Files | `Server/logs/*.log` |
 
-## 🧪 Failure Simulation
+> **Note:** Redis events are in-memory and cleared on restart. This is acceptable for demo purposes.
 
-The Dashboard includes built-in chaos engineering controls:
+---
 
-- **❌ Kill Leader** - Triggers leader election and failover
-- **❌ Kill Random Worker** - Tests task reassignment
-- **⏸️ Pause Queue** - Simulates Redis outage (10s)
-- **🛑 Disable Scheduler** - Stops task dispatching
+## 🧪 Chaos Engineering Controls
+
+The Dashboard includes built-in chaos engineering controls to test system resilience:
+
+| Control | Effect | Recovery |
+|---------|--------|----------|
+| **❌ Kill Leader** | Crashes the current leader scheduler | New leader elected in ~10-15s |
+| **❌ Kill Random Worker** | Crashes a random worker mid-execution | Task reassigned after heartbeat timeout |
+| **⏸️ Pause Queue** | Simulates Redis outage (10s) | Resumes automatically |
+| **🛑 Disable Scheduler** | Stops new task dispatching | Re-enable via UI |
+| **🔄 Reset Instances** | Restarts all killed instances | Immediate |
 
 All actions are logged in the Event Timeline with real-time updates.
 
-## 🏗️ Architecture
-
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  Scheduler  │────▶│    Redis    │────▶│   Worker    │
-│  (Leader)   │     │    Queue    │     │  (Pool)     │
-└─────────────┘     └─────────────┘     └─────────────┘
-       │                                        │
-       ▼                                        ▼
-┌─────────────┐                        ┌─────────────┐
-│ PostgreSQL  │◀───────────────────────│  Heartbeat  │
-│  (Tasks)    │                        │  Monitor    │
-└─────────────┘                        └─────────────┘
-```
-
-**Components:**
-- **API Server** - Accepts jobs, writes to PostgreSQL
-- **Scheduler** - Leader watches DB, dispatches tasks to Redis queue
-- **Worker Pool** - Consumes from Redis, acquires DB lease, executes tasks
-- **Heartbeat Monitor** - Tracks worker health, triggers reassignment on failure
-
-## 🛑 Stop Services
-
-```bash
-./stop.sh
-```
-
-Or manually:
-```bash
-pkill -f 'node.*server.js|node.*scheduler|node.*worker|vite'
-```
+---
 
 ## 📊 Monitoring
 
-**View logs:**
+### View Logs
+
 ```bash
-tail -f logs/api.log
-tail -f logs/scheduler1.log
-tail -f logs/worker1.log
+# Docker (production)
+docker compose -f docker-compose.prod.yml logs -f api
+docker compose -f docker-compose.prod.yml logs -f scheduler
+docker compose -f docker-compose.prod.yml logs -f worker
+
+# Local development
+tail -f Server/logs/api.log
+tail -f Server/logs/scheduler.log
 ```
 
-**Check system status:**
+### Check System Status
+
 ```bash
-curl http://localhost:3000/instances | jq
+# Overall status
 curl http://localhost:3000/status | jq
+
+# Active instances (schedulers/workers)
+curl http://localhost:3000/instances | jq
+
+# System events
+curl http://localhost:3000/events | jq
+
+# Health check
+curl http://localhost:3000/health
 ```
 
-**View events:**
-```bash
-curl http://localhost:3000/events | jq
+---
+
+## 📁 Project Structure
+
 ```
+distributed-task-scheduler/
+├── Client/                    # React frontend (Vite)
+│   ├── src/
+│   │   ├── components/        # UI components
+│   │   ├── pages/             # Page components
+│   │   └── context/           # React context
+│   ├── nginx.conf             # Production Nginx config
+│   └── Dockerfile.prod        # Frontend production image
+├── Server/                    # Node.js microservices
+│   ├── api/                   # Express API & WebSocket
+│   ├── common/                # Shared utilities
+│   ├── db/                    # Database migrations
+│   ├── queue/                 # Redis queue utilities
+│   ├── services/
+│   │   ├── scheduler-coordinator/  # Leader election
+│   │   ├── dispatcher/             # Task dispatching
+│   │   ├── recovery/               # Lease recovery
+│   │   └── worker-monitor/         # Worker health
+│   ├── worker/                # Task execution
+│   └── Dockerfile             # Backend Docker image
+├── docker-compose.yml         # Development setup
+├── docker-compose.prod.yml    # Production setup
+├── deploy.sh                  # Azure/VM deployment script
+└── README.md                  # This file
+```
+
+---
 
 ## 🎯 Use Cases
 
 - **Demo/Visualizer** - Interactive demonstration of distributed systems concepts
 - **Learning Tool** - Understand leader election, fault tolerance, and task scheduling
 - **Chaos Testing** - Test resilience and recovery mechanisms
-- **Development** - Build and test distributed task processing systems
+- **Interview Prep** - Explain distributed systems with a working visual example
+- **Development** - Foundation for building production task schedulers
+
+---
 
 ## 📝 License
 
