@@ -1,0 +1,153 @@
+services:
+  nginx:
+    build:
+      context: ./Client
+      dockerfile: Dockerfile.prod
+    ports:
+      - "80:80"
+    mem_limit: 64m
+    cpus: 0.1
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: scheduler
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+      POSTGRES_DB: task_scheduler
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./Server/db/migrations:/docker-entrypoint-initdb.d
+    mem_limit: 256m
+    cpus: 0.25
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scheduler -d task_scheduler"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:alpine
+    command: redis-server --maxmemory 100mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    mem_limit: 128m
+    cpus: 0.1
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  etcd:
+    image: bitnami/etcd:latest
+    environment:
+      ALLOW_NONE_AUTHENTICATION: "yes"
+      ETCD_ADVERTISE_CLIENT_URLS: http://etcd:2379
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+    mem_limit: 64m
+    cpus: 0.1
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  api:
+    build: ./Server
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgres://scheduler:${DB_PASSWORD:-changeme}@postgres:5432/task_scheduler
+      REDIS_URL: redis://redis:6379
+      ETCD_HOSTS: http://etcd:2379
+      MAX_SESSIONS: 50
+    mem_limit: 256m
+    cpus: 0.5
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      etcd:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  scheduler:
+    build: ./Server
+    command: node services/scheduler-coordinator/index.js
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://scheduler:${DB_PASSWORD:-changeme}@postgres:5432/task_scheduler
+      REDIS_URL: redis://redis:6379
+      ETCD_HOSTS: http://etcd:2379
+    mem_limit: 128m
+    cpus: 0.2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      etcd:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - app-network
+    # Scale with: docker compose up --scale scheduler=3
+
+  worker:
+    build: ./Server
+    command: node worker/index.js
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://scheduler:${DB_PASSWORD:-changeme}@postgres:5432/task_scheduler
+      REDIS_URL: redis://redis:6379
+    mem_limit: 128m
+    cpus: 0.2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
+    # Scale with: docker compose up --scale worker=5
+
+  cleanup:
+    build: ./Server
+    command: node scripts/session-cleanup.js
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://scheduler:${DB_PASSWORD:-changeme}@postgres:5432/task_scheduler
+      REDIS_URL: redis://redis:6379
+    mem_limit: 64m
+    cpus: 0.05
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
+
+volumes:
+  pg_data:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge
