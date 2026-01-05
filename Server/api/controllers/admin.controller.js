@@ -547,35 +547,32 @@ const killWorkerMidTask = async (req, res, next) => {
                 if (task && task.worker_id && task.status === 'RUNNING') {
                     const workerId = task.worker_id;
 
-                    // 3. Kill the worker
-                    logger.warn(`DEMO: Killing worker ${workerId} mid-task`);
-                    const workers = await processRegistry.getWorkers();
-                    const targetWorker = workers.find(w => w.id === workerId);
+                    // 3. Kill the worker via Redis pub/sub (works in Docker)
+                    logger.warn(`DEMO: Killing worker ${workerId} mid-task via Redis signal`);
+                    const chaosSignals = require('../../common/chaos-signals');
+                    await chaosSignals.killWorker(workerId);
 
-                    if (targetWorker) {
-                        process.kill(targetWorker.pid, 'SIGTERM');
+                    eventLogger.log('WORKER_KILLED_MID_TASK', `Worker ${workerId} killed mid-task`, {
+                        workerId,
+                        taskId
+                    });
 
-                        eventLogger.log('WORKER_KILLED_MID_TASK', `Worker ${workerId} killed mid-task`, {
-                            workerId,
-                            taskId
-                        });
-
-                        // 3.5. Clean up stale Redis pending entries from the killed worker
-                        const { redis } = require('../../queue/redis-queue');
-                        try {
-                            // Get pending entries for this worker and ACK them
-                            const pending = await redis.xpending('task-stream', 'workers-group', '-', '+', 10, workerId);
-                            for (const entry of pending) {
-                                const messageId = entry[0];
-                                await redis.xack('task-stream', 'workers-group', messageId);
-                                logger.info(`Cleaned up stale Redis message ${messageId} from killed worker`);
-                            }
-                        } catch (err) {
-                            logger.warn('Could not clean Redis pending entries', err.message);
+                    // 3.5. Clean up stale Redis pending entries from the killed worker
+                    const { redis } = require('../../queue/redis-queue');
+                    try {
+                        // Get pending entries for this worker and ACK them
+                        const pending = await redis.xpending('task-stream', 'workers-group', '-', '+', 10, workerId);
+                        for (const entry of pending) {
+                            const messageId = entry[0];
+                            await redis.xack('task-stream', 'workers-group', messageId);
+                            logger.info(`Cleaned up stale Redis message ${messageId} from killed worker`);
                         }
+                    } catch (err) {
+                        logger.warn('Could not clean Redis pending entries', err.message);
+                    }
 
-                        // 4. FAST: Immediately expire the lease and reset to PENDING
-                        await db.query(`
+                    // 4. FAST: Immediately expire the lease and reset to PENDING
+                    await db.query(`
                             UPDATE tasks 
                             SET status = 'PENDING',
                                 assigned_worker_id = NULL,
@@ -584,22 +581,21 @@ const killWorkerMidTask = async (req, res, next) => {
                             WHERE id = $1
                         `, [taskId]);
 
-                        eventLogger.log('TASK_LEASE_EXPIRED', `Task ${taskId.substring(0, 8)} lease expired (fast)`, {
-                            taskId,
-                            previousWorker: workerId
-                        });
+                    eventLogger.log('TASK_LEASE_EXPIRED', `Task ${taskId.substring(0, 8)} lease expired (fast)`, {
+                        taskId,
+                        previousWorker: workerId
+                    });
 
-                        // 5. Mark READY so another worker picks it up immediately
-                        await db.query(`
+                    // 5. Mark READY so another worker picks it up immediately
+                    await db.query(`
                             UPDATE tasks 
                             SET status = 'READY', updated_at = NOW()
                             WHERE id = $1
                         `, [taskId]);
 
-                        eventLogger.log('TASK_READY', `Task ${taskId.substring(0, 8)} marked READY for recovery`, {
-                            taskId
-                        });
-                    }
+                    eventLogger.log('TASK_READY', `Task ${taskId.substring(0, 8)} marked READY for recovery`, {
+                        taskId
+                    });
                 } else if (task && task.status === 'SUCCESS') {
                     logger.info('Task completed before we could kill worker');
                 } else {
