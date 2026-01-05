@@ -11,8 +11,11 @@ function SystemTopology() {
     const [detailedView, setDetailedView] = useState(true);
 
     useEffect(() => {
+        // Use environment variable for WebSocket URL, fallback to localhost for development
+        const WS_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
         // Connect to WebSocket server
-        const socket = io('http://localhost:3000', {
+        const socket = io(WS_URL, {
             transports: ['websocket', 'polling']
         });
 
