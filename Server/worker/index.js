@@ -163,6 +163,16 @@ const startWorker = async () => {
     process.on('SIGTERM', shutdown);
     process.on('SIGINT', shutdown);
 
+    // Listen for chaos kill signals via Redis pub/sub (for Docker mode)
+    const chaosSignals = require('../common/chaos-signals');
+    chaosSignals.onKillWorker(WORKER_ID, () => {
+        logger.warn(`Received KILL signal for ${WORKER_ID}`);
+        eventLogger.log('WORKER_KILLED', `Worker ${WORKER_ID} killed via chaos signal`, {
+            workerId: WORKER_ID
+        });
+        shutdown();
+    });
+
     while (true) {
         try {
             const msg = await redisQueue.consume(WORKER_ID);

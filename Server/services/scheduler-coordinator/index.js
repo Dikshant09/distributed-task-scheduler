@@ -53,6 +53,16 @@ class SchedulerCoordinator {
 
         process.on('SIGTERM', shutdown);
         process.on('SIGINT', shutdown);
+
+        // Listen for chaos kill signals via Redis pub/sub (for Docker mode)
+        const chaosSignals = require('../../common/chaos-signals');
+        chaosSignals.onKillScheduler(this.coordinatorId, () => {
+            logger.warn(`Received KILL signal for ${this.coordinatorId}`);
+            eventLogger.log('SCHEDULER_KILLED', `Scheduler ${this.coordinatorId} killed via chaos signal`, {
+                schedulerId: this.coordinatorId
+            });
+            shutdown();
+        });
     }
 
     _startSchedulingLoop() {
