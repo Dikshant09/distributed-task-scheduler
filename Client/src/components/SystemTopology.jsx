@@ -448,11 +448,6 @@ function SystemTopology() {
                 const detailWorkerStartX = 420 + (580 - detailWorkerTotalWidth) / 2;
                 const detailWorkerSpacing = detailWorkerWidth + detailWorkerPadding;
 
-                // Find executing worker index, default to first if none
-                const executingWorkerIndex = workers.slice(0, displayCount).findIndex(w => w.status === 'executing');
-                const targetWorkerIndex = executingWorkerIndex >= 0 ? executingWorkerIndex : 0;
-                const targetWorkerX = detailWorkerStartX + (targetWorkerIndex * detailWorkerSpacing) + 70;
-
                 return (
                     <>
                         {/* Coordinator → Dispatcher - follows same path as connection line */}
@@ -473,14 +468,27 @@ function SystemTopology() {
                             />
                         </circle>
 
-                        {/* Redis → Executing Worker (yellow when executing) */}
-                        <circle r="6" className="task-flow" fill={executingWorkerIndex >= 0 ? "#fbbf24" : "#3b82f6"}>
-                            <animateMotion
-                                dur="1.2s"
-                                repeatCount="indefinite"
-                                path={`M 780 310 L ${targetWorkerX} 380`}
-                            />
-                        </circle>
+                        {/* Redis → Executing Workers - ONE BALL PER EXECUTING WORKER */}
+                        {workers.slice(0, displayCount).map((worker, index) => {
+                            if (worker.status !== 'executing') return null;
+                            const targetWorkerX = detailWorkerStartX + (index * detailWorkerSpacing) + 70;
+
+                            return (
+                                <circle
+                                    key={`flow-redis-worker-${worker.id}`}
+                                    r="6"
+                                    className="task-flow"
+                                    fill="#fbbf24" // Yellow for executing
+                                >
+                                    <animateMotion
+                                        dur="1.2s"
+                                        repeatCount="indefinite"
+                                        path={`M 780 310 L ${targetWorkerX} 380`}
+                                        begin={`${index * 0.2}s`} // Stagger animations slightly
+                                    />
+                                </circle>
+                            );
+                        })}
                     </>
                 );
             })()}
