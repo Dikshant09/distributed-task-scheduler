@@ -72,6 +72,11 @@ services:
       REDIS_URL: redis://redis:6379
       ETCD_HOSTS: http://etcd:2379
       MAX_SESSIONS: 50
+      COMPOSE_PROJECT_DIR: /app/compose
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./docker-compose.prod.yml:/app/compose/docker-compose.prod.yml:ro
+      - ./.env.prod:/app/compose/.env.prod:ro
     mem_limit: 256m
     cpus: 0.5
     depends_on:

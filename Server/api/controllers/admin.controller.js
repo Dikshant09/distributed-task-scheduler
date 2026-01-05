@@ -323,49 +323,132 @@ const resetSystem = async (req, res, next) => {
 
 /**
  * POST /admin/instances/reset
- * Reset instances - ensure 3 scheduler coordinators and 5 workers are running
- * Spawns new processes if current count is below target
+ * Reset instances - ensure 3 schedulers and 5 workers are running
+ * 
+ * In Docker mode: Uses docker compose to scale services
+ * In local mode: Spawns Node.js processes directly
  */
 const resetInstances = async (req, res, next) => {
     try {
-        const { spawn } = require('child_process');
+        const { spawn, execSync } = require('child_process');
         const path = require('path');
 
-        const TARGET_COORDINATORS = 3;
+        const TARGET_SCHEDULERS = 3;
         const TARGET_WORKERS = 5;
+
+        // Detect if running in Docker (HOSTNAME is set to container ID)
+        const isDocker = process.env.HOSTNAME && /^[a-f0-9]{12}$/i.test(process.env.HOSTNAME);
 
         logger.warn('INSTANCE RESET: Ensuring required instances are running');
 
         // Get current counts from registry
         const all = await processRegistry.getAll();
-        const currentCoordinators = all.schedulers?.length || 0;
+        const currentSchedulers = all.schedulers?.length || 0;
         const currentWorkers = all.workers?.length || 0;
 
-        const coordinatorsNeeded = Math.max(0, TARGET_COORDINATORS - currentCoordinators);
+        if (isDocker) {
+            // Docker mode: Use docker start to restart exited containers
+            // Using 'docker start' instead of 'docker compose up' to avoid recreating containers
+            // which can cause network disruption
+            logger.info('Docker mode: Starting any stopped scheduler/worker containers');
+
+            try {
+                // Find exited scheduler and worker containers
+                const projectName = 'distributed-task-scheduler';
+                const findExitedCmd = `docker ps -a --filter "status=exited" --filter "name=${projectName}" --format "{{.Names}}"`;
+
+                const exitedContainers = execSync(findExitedCmd, {
+                    timeout: 10000,
+                    encoding: 'utf-8'
+                }).trim().split('\n').filter(name =>
+                    name && (name.includes('scheduler') || name.includes('worker'))
+                );
+
+                logger.info(`Found ${exitedContainers.length} stopped containers: ${exitedContainers.join(', ')}`);
+
+                if (exitedContainers.length === 0) {
+                    return res.json({
+                        status: 'success',
+                        message: 'No stopped scheduler/worker containers to restart.',
+                        data: {
+                            currentSchedulers,
+                            currentWorkers,
+                            mode: 'docker'
+                        }
+                    });
+                }
+
+                // Start each exited container
+                for (const container of exitedContainers) {
+                    try {
+                        execSync(`docker start ${container}`, { timeout: 10000, stdio: 'pipe' });
+                        logger.info(`Started container: ${container}`);
+                    } catch (startErr) {
+                        logger.error(`Failed to start ${container}: ${startErr.message}`);
+                    }
+                }
+
+                // Log the event
+                eventLogger.log('INSTANCES_RESET', 'Docker containers restarted', {
+                    containersStarted: exitedContainers.length,
+                    mode: 'docker'
+                });
+
+                // Wait for containers to start and register
+                setTimeout(() => {
+                    const { emitInstanceUpdate } = require('../websocket');
+                    emitInstanceUpdate();
+                }, 3000);
+
+                return res.json({
+                    status: 'success',
+                    message: `Restarted ${exitedContainers.length} stopped containers.`,
+                    data: {
+                        containersStarted: exitedContainers,
+                        beforeReset: {
+                            schedulers: currentSchedulers,
+                            workers: currentWorkers
+                        },
+                        mode: 'docker'
+                    }
+                });
+            } catch (dockerError) {
+                logger.error('Docker command failed:', dockerError.message);
+                return res.status(500).json({
+                    status: 'error',
+                    message: `Docker command failed: ${dockerError.message}`,
+                    data: {
+                        hint: 'Make sure Docker socket is mounted and accessible'
+                    }
+                });
+            }
+        }
+
+        // Local development mode: Spawn Node.js processes
+        const schedulersNeeded = Math.max(0, TARGET_SCHEDULERS - currentSchedulers);
         const workersNeeded = Math.max(0, TARGET_WORKERS - currentWorkers);
 
-        logger.info(`Current: ${currentCoordinators} coordinators, ${currentWorkers} workers`);
-        logger.info(`Need to spawn: ${coordinatorsNeeded} coordinators, ${workersNeeded} workers`);
+        logger.info(`Current: ${currentSchedulers} schedulers, ${currentWorkers} workers`);
+        logger.info(`Need to spawn: ${schedulersNeeded} schedulers, ${workersNeeded} workers`);
 
         const spawned = {
-            coordinators: [],
+            schedulers: [],
             workers: []
         };
 
         // Get the Server directory path
         const serverDir = path.join(__dirname, '../..');
 
-        // Spawn missing coordinators
-        for (let i = 0; i < coordinatorsNeeded; i++) {
-            const logFile = path.join(serverDir, `../logs/coordinator_spawned_${Date.now()}_${i}.log`);
+        // Spawn missing schedulers
+        for (let i = 0; i < schedulersNeeded; i++) {
             const child = spawn('node', ['services/scheduler-coordinator/index.js'], {
                 cwd: serverDir,
                 detached: true,
                 stdio: ['ignore', 'pipe', 'pipe']
             });
             child.unref();
-            spawned.coordinators.push(child.pid);
-            logger.info(`Spawned coordinator (PID: ${child.pid})`);
+            spawned.schedulers.push(child.pid);
+            logger.info(`Spawned scheduler (PID: ${child.pid})`);
 
             // Small delay between spawns to avoid race conditions
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -388,10 +471,11 @@ const resetInstances = async (req, res, next) => {
 
         // Log the event
         eventLogger.log('INSTANCES_RESET', 'Instances restored to target counts', {
-            targetCoordinators: TARGET_COORDINATORS,
+            targetSchedulers: TARGET_SCHEDULERS,
             targetWorkers: TARGET_WORKERS,
-            spawnedCoordinators: spawned.coordinators.length,
-            spawnedWorkers: spawned.workers.length
+            spawnedSchedulers: spawned.schedulers.length,
+            spawnedWorkers: spawned.workers.length,
+            mode: 'local'
         });
 
         // Wait for processes to register, then emit update
@@ -402,18 +486,19 @@ const resetInstances = async (req, res, next) => {
 
         res.json({
             status: 'success',
-            message: `Instance reset complete. Spawned ${spawned.coordinators.length} coordinators, ${spawned.workers.length} workers.`,
+            message: `Instance reset complete. Spawned ${spawned.schedulers.length} schedulers, ${spawned.workers.length} workers.`,
             data: {
-                targetCoordinators: TARGET_COORDINATORS,
+                targetSchedulers: TARGET_SCHEDULERS,
                 targetWorkers: TARGET_WORKERS,
                 beforeReset: {
-                    coordinators: currentCoordinators,
+                    schedulers: currentSchedulers,
                     workers: currentWorkers
                 },
                 spawned: {
-                    coordinators: spawned.coordinators.length,
+                    schedulers: spawned.schedulers.length,
                     workers: spawned.workers.length
-                }
+                },
+                mode: 'local'
             }
         });
     } catch (error) {

@@ -4,10 +4,11 @@ const adminController = require('../controllers/admin.controller');
 const router = express.Router();
 
 // Simple in-memory rate limiter for chaos endpoints
+// More flexible for demos while still preventing abuse
 const chaosRateLimiter = (() => {
     const requests = new Map();
-    const WINDOW_MS = 60 * 1000; // 1 minute
-    const MAX_REQUESTS = 5; // 5 requests per minute per IP
+    const WINDOW_MS = 30 * 1000; // 30 seconds (reduced from 60)
+    const MAX_REQUESTS = 10; // 10 requests per 30 seconds per IP (more flexible)
 
     return (req, res, next) => {
         const ip = req.ip || req.connection.remoteAddress || 'unknown';

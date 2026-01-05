@@ -279,8 +279,8 @@ function SystemTopology() {
                 <text x="60" y="48" className="node-status">Leader Election</text>
             </g>
 
-            {/* Scheduler Coordinator Nodes */}
-            <g className="coordinators">
+            {/* Scheduler Nodes */}
+            <g className="schedulers">
                 {schedulers.map((scheduler, index) => {
                     const x = 220 + (index * 160);
                     const isLeader = scheduler.isLeader;
@@ -289,7 +289,7 @@ function SystemTopology() {
                         <g key={scheduler.id} transform={`translate(${x}, 80)`}>
                             <rect width="140" height="100" rx="8" className={`node-bg ${isLeader ? 'leader-bg' : 'standby-bg'}`} />
                             <text x="70" y="25" className="node-title">
-                                {isLeader ? '👑' : '⏸️'} Coordinator
+                                {isLeader ? '👑' : '⏸️'} Scheduler
                             </text>
                             <text x="70" y="45" className="node-status">{isLeader ? 'LEADER' : 'Standby'}</text>
                             <text x="70" y="62" className="node-id">{scheduler.id.substring(0, 12)}</text>
@@ -299,7 +299,7 @@ function SystemTopology() {
                     );
                 })}
 
-                {/* Connection from Etcd to Coordinators - Route above nodes */}
+                {/* Connection from Etcd to Schedulers - Route above nodes */}
                 {schedulers.map((scheduler, index) => {
                     const x = 220 + (index * 160) + 70;
                     // Route line: from Etcd right side (170, 135) → up to y=50 → horizontal to above coordinator → down to top of coordinator
