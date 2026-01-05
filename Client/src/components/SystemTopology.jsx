@@ -439,6 +439,20 @@ function SystemTopology() {
             {/* Animated Task Flows */}
             {leader && workers.length > 0 && queueDepth > 0 && (() => {
                 const leaderX = 220 + schedulers.findIndex(s => s.isLeader) * 160 + 70;
+                // Calculate worker positions for animation
+                const maxDetailedWorkers = 4;
+                const displayCount = Math.min(numWorkers, maxDetailedWorkers);
+                const detailWorkerWidth = 140;
+                const detailWorkerPadding = 15;
+                const detailWorkerTotalWidth = (displayCount * detailWorkerWidth) + ((displayCount - 1) * detailWorkerPadding);
+                const detailWorkerStartX = 420 + (580 - detailWorkerTotalWidth) / 2;
+                const detailWorkerSpacing = detailWorkerWidth + detailWorkerPadding;
+
+                // Find executing worker index, default to first if none
+                const executingWorkerIndex = workers.slice(0, displayCount).findIndex(w => w.status === 'executing');
+                const targetWorkerIndex = executingWorkerIndex >= 0 ? executingWorkerIndex : 0;
+                const targetWorkerX = detailWorkerStartX + (targetWorkerIndex * detailWorkerSpacing) + 70;
+
                 return (
                     <>
                         {/* Coordinator → Dispatcher - follows same path as connection line */}
@@ -456,6 +470,15 @@ function SystemTopology() {
                                 dur="1s"
                                 repeatCount="indefinite"
                                 path="M 640 270 L 700 270"
+                            />
+                        </circle>
+
+                        {/* Redis → Executing Worker (yellow when executing) */}
+                        <circle r="6" className="task-flow" fill={executingWorkerIndex >= 0 ? "#fbbf24" : "#3b82f6"}>
+                            <animateMotion
+                                dur="1.2s"
+                                repeatCount="indefinite"
+                                path={`M 780 310 L ${targetWorkerX} 380`}
                             />
                         </circle>
                     </>
@@ -486,6 +509,22 @@ function SystemTopology() {
                     </span>
                 </div>
             </div>
+
+            {/* Warning when no schedulers or workers */}
+            {(schedulers.length === 0 || workers.length === 0) && (
+                <div className="topology-warning">
+                    <span className="warning-icon">⚠️</span>
+                    <span className="warning-text">
+                        {schedulers.length === 0 && workers.length === 0
+                            ? "No schedulers or workers available! "
+                            : schedulers.length === 0
+                                ? "No schedulers available! "
+                                : "No workers available! "}
+                        Press <strong>🔄 Reset Instances</strong> button below to restore.
+                    </span>
+                </div>
+            )}
+
             {detailedView ? renderDetailedView() : renderSimpleView()}
         </div>
     );

@@ -43,6 +43,45 @@
     border: 1px solid var(--accent-danger);
 }
 
+/* Topology Warning Banner */
+.topology-warning {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-lg);
+    margin: var(--spacing-md) 0;
+    background: rgba(251, 191, 36, 0.15);
+    border: 1px solid rgba(251, 191, 36, 0.5);
+    border-radius: var(--radius-lg);
+    animation: pulse-warning 2s ease-in-out infinite;
+}
+
+.topology-warning .warning-icon {
+    font-size: 1.5rem;
+}
+
+.topology-warning .warning-text {
+    color: #fbbf24;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.topology-warning .warning-text strong {
+    color: #22c55e;
+}
+
+@keyframes pulse-warning {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4);
+    }
+
+    50% {
+        box-shadow: 0 0 0 8px rgba(251, 191, 36, 0);
+    }
+}
+
 /* Topology Controls */
 .topology-controls {
     display: flex;
