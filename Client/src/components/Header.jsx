@@ -25,7 +25,7 @@ function Header() {
     return (
         <header className="header">
             <div className="header-left">
-                <h1>Task Scheduler</h1>
+                <h1>Distributed Task Scheduler</h1>
             </div>
             <div className="header-right">
                 <div className="status-indicator">

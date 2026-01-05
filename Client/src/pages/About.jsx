@@ -109,9 +109,9 @@ const About = () => {
                 <h2>🚀 Try It Out</h2>
                 <div className="cta-buttons">
                     <Link to="/" className="cta-button primary">
-                        View Dashboard
+                        Go to Dashboard
                     </Link>
-                    <a
+                    {/* <a
                         href="https://github.com/Dikshant09/distributed-task-scheduler"
                         target="_blank"
                         rel="noopener noreferrer"
