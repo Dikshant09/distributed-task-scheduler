@@ -30,6 +30,7 @@ export const killWorkerMidTask = (killAfterMs) => api.post('/admin/faults/kill-w
 export const pauseQueue = (duration) => api.post('/admin/faults/pause-queue', { duration });
 export const networkDelay = (duration) => api.post('/admin/faults/network-delay', { duration });
 export const resetSystem = () => api.post('/admin/system/reset');
+export const resetInstances = () => api.post('/admin/instances/reset');
 
 // Events
 export const getEvents = (params) => {

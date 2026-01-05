@@ -56,6 +56,9 @@ router.post('/faults/network-delay', chaosRateLimiter, adminController.networkDe
 // System reset (for demos)
 router.post('/system/reset', adminController.resetSystem);
 
+// Instance reset - restore to 3 coordinators, 5 workers
+router.post('/instances/reset', adminController.resetInstances);
+
 // DLQ management
 router.get('/dlq', adminController.getDLQTasks);
 router.post('/dlq/:id/retry', adminController.retryFromDLQ);

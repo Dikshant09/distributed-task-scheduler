@@ -134,6 +134,17 @@
     box-shadow: 0 8px 20px rgba(251, 191, 36, 0.5);
 }
 
+.fault-btn.success {
+    background: var(--gradient-success);
+    color: white;
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+}
+
+.fault-btn.success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(34, 197, 94, 0.5);
+}
+
 /* Message Banner */
 .message-banner {
     padding: var(--spacing-md) var(--spacing-xl);

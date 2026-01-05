@@ -362,6 +362,107 @@ const resetSystem = async (req, res, next) => {
 };
 
 /**
+ * POST /admin/instances/reset
+ * Reset instances - ensure 3 scheduler coordinators and 5 workers are running
+ * Spawns new processes if current count is below target
+ */
+const resetInstances = async (req, res, next) => {
+    try {
+        const { spawn } = require('child_process');
+        const path = require('path');
+
+        const TARGET_COORDINATORS = 3;
+        const TARGET_WORKERS = 5;
+
+        logger.warn('INSTANCE RESET: Ensuring required instances are running');
+
+        // Get current counts from registry
+        const all = await processRegistry.getAll();
+        const currentCoordinators = all.schedulers?.length || 0;
+        const currentWorkers = all.workers?.length || 0;
+
+        const coordinatorsNeeded = Math.max(0, TARGET_COORDINATORS - currentCoordinators);
+        const workersNeeded = Math.max(0, TARGET_WORKERS - currentWorkers);
+
+        logger.info(`Current: ${currentCoordinators} coordinators, ${currentWorkers} workers`);
+        logger.info(`Need to spawn: ${coordinatorsNeeded} coordinators, ${workersNeeded} workers`);
+
+        const spawned = {
+            coordinators: [],
+            workers: []
+        };
+
+        // Get the Server directory path
+        const serverDir = path.join(__dirname, '../..');
+
+        // Spawn missing coordinators
+        for (let i = 0; i < coordinatorsNeeded; i++) {
+            const logFile = path.join(serverDir, `../logs/coordinator_spawned_${Date.now()}_${i}.log`);
+            const child = spawn('node', ['services/scheduler-coordinator/index.js'], {
+                cwd: serverDir,
+                detached: true,
+                stdio: ['ignore', 'pipe', 'pipe']
+            });
+            child.unref();
+            spawned.coordinators.push(child.pid);
+            logger.info(`Spawned coordinator (PID: ${child.pid})`);
+
+            // Small delay between spawns to avoid race conditions
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        // Spawn missing workers
+        for (let i = 0; i < workersNeeded; i++) {
+            const child = spawn('node', ['worker/index.js'], {
+                cwd: serverDir,
+                detached: true,
+                stdio: ['ignore', 'pipe', 'pipe']
+            });
+            child.unref();
+            spawned.workers.push(child.pid);
+            logger.info(`Spawned worker (PID: ${child.pid})`);
+
+            // Small delay between spawns
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+
+        // Log the event
+        eventLogger.log('INSTANCES_RESET', 'Instances restored to target counts', {
+            targetCoordinators: TARGET_COORDINATORS,
+            targetWorkers: TARGET_WORKERS,
+            spawnedCoordinators: spawned.coordinators.length,
+            spawnedWorkers: spawned.workers.length
+        });
+
+        // Wait for processes to register, then emit update
+        setTimeout(() => {
+            const { emitInstanceUpdate } = require('../websocket');
+            emitInstanceUpdate();
+        }, 2000);
+
+        res.json({
+            status: 'success',
+            message: `Instance reset complete. Spawned ${spawned.coordinators.length} coordinators, ${spawned.workers.length} workers.`,
+            data: {
+                targetCoordinators: TARGET_COORDINATORS,
+                targetWorkers: TARGET_WORKERS,
+                beforeReset: {
+                    coordinators: currentCoordinators,
+                    workers: currentWorkers
+                },
+                spawned: {
+                    coordinators: spawned.coordinators.length,
+                    workers: spawned.workers.length
+                }
+            }
+        });
+    } catch (error) {
+        logger.error('Instance reset failed:', error);
+        next(error);
+    }
+};
+
+/**
  * POST /admin/faults/network-delay
  * Simulate network delay by pausing the queue temporarily
  * This causes tasks to accumulate in READY state
@@ -568,5 +669,6 @@ module.exports = {
     getDLQTasks,
     retryFromDLQ,
     cleanupDLQ,
-    resetSystem
+    resetSystem,
+    resetInstances
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getSystemStatus, getInstances, killLeader, killWorker, killWorkerMidTask, pauseQueue, networkDelay, disableScheduler } from '../api/api';
+import { getSystemStatus, getInstances, killLeader, killWorker, killWorkerMidTask, pauseQueue, networkDelay, disableScheduler, resetInstances } from '../api/api';
 import EventTimeline from '../components/EventTimeline';
 import Toast from '../components/Toast';
 import './Dashboard.css';
@@ -69,6 +69,11 @@ function Dashboard() {
                     response = await networkDelay(5000);
                     showToast('Network delay simulated for 5 seconds (tasks accumulate in READY)', 'info');
                     break;
+                case 'reset-instances':
+                    showToast('Restoring instances to target counts...', 'info');
+                    response = await resetInstances();
+                    showToast(response.data.message, 'success');
+                    break;
                 default:
                     break;
             }
@@ -107,6 +112,9 @@ function Dashboard() {
                 </button>
                 <button className="fault-btn warning" onClick={() => handleFault('disable-scheduler')}>
                     🛑 Disable Scheduler
+                </button>
+                <button className="fault-btn success" onClick={() => handleFault('reset-instances')}>
+                    🔄 Reset Instances
                 </button>
             </div>
 
