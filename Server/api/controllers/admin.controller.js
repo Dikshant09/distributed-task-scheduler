@@ -43,7 +43,7 @@ const disableScheduler = async (req, res, next) => {
 
 /**
  * POST /admin/faults/kill-leader
- * Simulate leader failure by killing the current leader process
+ * Simulate leader failure by sending kill signal via Redis pub/sub
  */
 const killLeader = async (req, res, next) => {
     try {
@@ -58,37 +58,29 @@ const killLeader = async (req, res, next) => {
             });
         }
 
-        logger.warn(`Killing leader ${leader.id} (PID: ${leader.pid})`);
+        logger.warn(`Killing leader ${leader.id} via Redis signal`);
 
-        try {
-            process.kill(leader.pid, 'SIGTERM');
+        // Use Redis pub/sub to send kill signal (works across Docker containers)
+        const chaosSignals = require('../../common/chaos-signals');
+        await chaosSignals.killScheduler(leader.id);
 
-            // Log admin-initiated kill event
-            eventLogger.log('LEADER_KILLED', `Leader ${leader.id} killed by admin`, {
-                leaderId: leader.id,
-                pid: leader.pid,
-                reason: 'admin_fault_injection'
-            });
+        // Log admin-initiated kill event
+        eventLogger.log('LEADER_KILLED', `Leader ${leader.id} killed by admin`, {
+            leaderId: leader.id,
+            reason: 'admin_fault_injection'
+        });
 
-            // Emit WebSocket update for immediate topology refresh
-            const { emitInstanceUpdate } = require('../websocket');
-            setTimeout(() => emitInstanceUpdate(), 500);
+        // Emit WebSocket update for immediate topology refresh
+        const { emitInstanceUpdate } = require('../websocket');
+        setTimeout(() => emitInstanceUpdate(), 500);
 
-            res.json({
-                status: 'success',
-                message: `Leader ${leader.id} (PID: ${leader.pid}) killed. Standby should become leader within 10-15 seconds.`,
-                data: {
-                    killedLeader: leader.id,
-                    pid: leader.pid
-                }
-            });
-        } catch (killError) {
-            logger.error('Failed to kill leader process', killError);
-            res.status(500).json({
-                status: 'error',
-                message: `Failed to kill leader process: ${killError.message}`
-            });
-        }
+        res.json({
+            status: 'success',
+            message: `Kill signal sent to leader ${leader.id}. Standby should become leader within 10-15 seconds.`,
+            data: {
+                killedLeader: leader.id
+            }
+        });
     } catch (error) {
         next(error);
     }
@@ -96,7 +88,7 @@ const killLeader = async (req, res, next) => {
 
 /**
  * POST /admin/faults/kill-worker
- * Simulate worker failure by killing a worker process
+ * Simulate worker failure by sending kill signal via Redis pub/sub
  * Optional body param: { workerId: 'worker-xxx' } to kill specific worker
  */
 const killWorker = async (req, res, next) => {
@@ -128,47 +120,29 @@ const killWorker = async (req, res, next) => {
             targetWorker = workers[Math.floor(Math.random() * workers.length)];
         }
 
-        logger.warn(`Killing worker ${targetWorker.id} (PID: ${targetWorker.pid})`);
+        logger.warn(`Killing worker ${targetWorker.id} via Redis signal`);
 
-        try {
-            process.kill(targetWorker.pid, 'SIGTERM');
+        // Use Redis pub/sub to send kill signal (works across Docker containers)
+        const chaosSignals = require('../../common/chaos-signals');
+        await chaosSignals.killWorker(targetWorker.id);
 
-            // Immediately update worker's last_heartbeat to mark it as dead
-            // This ensures UI shows worker as dead instantly, not after 30s timeout
-            const db = require('../../db');
-            await db.query(
-                `UPDATE workers SET last_heartbeat = NOW() - INTERVAL '1 hour' WHERE worker_id = $1`,
-                [targetWorker.id]
-            );
+        // Log admin-initiated kill event
+        eventLogger.log('WORKER_KILLED', `Worker ${targetWorker.id} killed by admin`, {
+            workerId: targetWorker.id,
+            reason: 'admin_fault_injection'
+        });
 
-            // Log admin-initiated kill event
-            eventLogger.log('WORKER_KILLED', `Worker ${targetWorker.id} killed by admin`, {
-                workerId: targetWorker.id,
-                pid: targetWorker.pid,
-                reason: 'admin_fault_injection'
-            });
+        // Emit WebSocket update for immediate topology refresh
+        const { emitInstanceUpdate } = require('../websocket');
+        setTimeout(() => emitInstanceUpdate(), 500);
 
-            // Note: Worker failure will be detected by Worker Monitor service
-
-            // Emit WebSocket update for immediate topology refresh
-            const { emitInstanceUpdate } = require('../websocket');
-            setTimeout(() => emitInstanceUpdate(), 100); // Reduced delay to 100ms
-
-            res.json({
-                status: 'success',
-                message: `Worker ${targetWorker.id} (PID: ${targetWorker.pid}) killed. Tasks will be reassigned after lease expiry.`,
-                data: {
-                    killedWorker: targetWorker.id,
-                    pid: targetWorker.pid
-                }
-            });
-        } catch (killError) {
-            logger.error('Failed to kill worker process', killError);
-            res.status(500).json({
-                status: 'error',
-                message: `Failed to kill worker process: ${killError.message}`
-            });
-        }
+        res.json({
+            status: 'success',
+            message: `Kill signal sent to worker ${targetWorker.id}. Tasks will be reassigned after lease expiry.`,
+            data: {
+                killedWorker: targetWorker.id
+            }
+        });
     } catch (error) {
         next(error);
     }
