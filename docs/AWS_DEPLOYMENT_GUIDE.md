@@ -290,20 +290,250 @@ docker compose -f docker-compose.prod.yml exec postgres psql -U scheduler -d tas
 docker compose -f docker-compose.prod.yml exec postgres psql -U scheduler -d task_scheduler -c "SELECT id, type, is_leader FROM process_instances;"
 ```
 
-### Adding a Custom Domain (Optional)
+### Adding a Custom Domain
 
-**Option 1: Free Subdomain (DuckDNS)**
+#### Option 1: Free Subdomain with DuckDNS (Recommended)
+
+DuckDNS provides free subdomains that are perfect for demo projects and portfolios.
+
+**Step 1: Create DuckDNS Account**
 1. Go to https://www.duckdns.org
-2. Sign in with GitHub/Google
-3. Create subdomain: `your-app.duckdns.org`
-4. Point to your EC2 public IP
-5. Access via: `http://your-app.duckdns.org`
+2. Sign in with GitHub, Google, Reddit, or Twitter
+3. No email verification required - instant access
 
-**Option 2: AWS Route 53 + Your Domain**
-1. Purchase domain or use existing
-2. Create hosted zone in Route 53
-3. Add A record pointing to EC2 IP
-4. Update domain nameservers
+**Step 2: Create Your Subdomain**
+1. In the "sub domain" field, enter your desired name (e.g., `distributed-scheduler`)
+2. Click "add domain"
+3. You'll see: `success: domain distributed-scheduler.duckdns.org added to your account`
+
+**Step 3: Point to Your EC2 IP**
+1. Find your EC2 public IP:
+   ```bash
+   # On EC2 instance
+   curl -4 icanhazip.com
+   ```
+2. On DuckDNS website, enter your EC2 IP in the "current ip" field
+3. Click "update ip"
+4. You'll see: `OK` response
+
+**Step 4: Verify DNS Resolution**
+```bash
+# On EC2 instance
+nslookup distributed-scheduler.duckdns.org
+
+# Should show:
+# Name:   distributed-scheduler.duckdns.org
+# Address: <your-ec2-ip>
+```
+
+**Step 5: Set Up Auto-Update (Important!)**
+
+EC2 public IPs can change when you stop/start instances. Set up automatic updates:
+
+```bash
+# On EC2 instance, create update script
+# Replace YOUR_TOKEN with your token from DuckDNS website
+echo "curl 'https://www.duckdns.org/update?domains=distributed-scheduler&token=YOUR_TOKEN&ip='" | sudo tee /usr/local/bin/duckdns-update.sh
+
+# Make executable
+sudo chmod +x /usr/local/bin/duckdns-update.sh
+
+# Test it
+/usr/local/bin/duckdns-update.sh
+# Should return: OK
+
+# Add to crontab (updates every 5 minutes)
+(crontab -l 2>/dev/null; echo "*/5 * * * * /usr/local/bin/duckdns-update.sh >/dev/null 2>&1") | crontab -
+
+# Verify cron job
+crontab -l
+```
+
+**Step 6: Access Your Application**
+
+Your app is now accessible at:
+- ✅ **http://distributed-scheduler.duckdns.org** (custom domain)
+- ✅ **http://\<EC2-IP\>** (still works)
+
+**Note on HTTPS:**
+- DuckDNS domains use HTTP by default
+- For HTTPS, you can add Let's Encrypt SSL (see HTTPS Setup section below)
+- For demo/portfolio projects, HTTP is acceptable
+
+#### Option 2: AWS Route 53 + Custom Domain
+
+If you own a domain or want to purchase one:
+
+1. **Purchase Domain** (if needed)
+   - AWS Route 53: ~$12/year for .com
+   - Or use existing domain from GoDaddy, Namecheap, etc.
+
+2. **Create Hosted Zone in Route 53**
+   ```bash
+   # Via AWS Console:
+   # Route 53 → Hosted zones → Create hosted zone
+   # Enter your domain name
+   ```
+
+3. **Add A Record**
+   - Record name: `scheduler` (or leave blank for root domain)
+   - Record type: `A`
+   - Value: Your EC2 public IP
+   - TTL: 300
+
+4. **Update Nameservers** (if domain not on Route 53)
+   - Copy the 4 NS records from Route 53
+   - Update at your domain registrar
+
+5. **Wait for DNS Propagation** (5-60 minutes)
+   ```bash
+   # Check DNS propagation
+   nslookup scheduler.yourdomain.com
+   ```
+
+**Cost:** ~$0.50/month for hosted zone + domain registration fee
+
+#### Option 3: Elastic IP (Prevents IP Changes)
+
+To keep a permanent IP address:
+
+```bash
+# Via AWS Console:
+# EC2 → Elastic IPs → Allocate Elastic IP address
+# Actions → Associate Elastic IP address → Select your instance
+```
+
+**Benefits:**
+- IP never changes (even after stop/start)
+- No need for DuckDNS auto-update
+
+**Cost:**
+- ✅ Free while associated with running instance
+- ⚠️ $0.005/hour (~$3.60/month) if instance is stopped
+
+---
+
+### HTTPS Setup (Optional)
+
+Adding HTTPS gives you the green padlock and encrypted traffic.
+
+#### Option A: Let's Encrypt with Certbot
+
+**Requirements:**
+- Custom domain (DuckDNS or your own)
+- Port 443 open in EC2 security group
+
+**Steps:**
+
+1. **Open Port 443**
+   ```bash
+   # In AWS Console:
+   # EC2 → Security Groups → Your SG → Inbound rules → Add rule
+   # Type: HTTPS, Port: 443, Source: 0.0.0.0/0
+   ```
+
+2. **Install Certbot**
+   ```bash
+   # On EC2 instance
+   sudo snap install --classic certbot
+   sudo ln -s /snap/bin/certbot /usr/bin/certbot
+   ```
+
+3. **Stop Nginx Temporarily**
+   ```bash
+   docker compose -f docker-compose.prod.yml stop nginx
+   ```
+
+4. **Get SSL Certificate**
+   ```bash
+   sudo certbot certonly --standalone -d distributed-scheduler.duckdns.org
+   
+   # Follow prompts:
+   # - Enter email
+   # - Agree to terms
+   # - Certificates saved to: /etc/letsencrypt/live/distributed-scheduler.duckdns.org/
+   ```
+
+5. **Update Nginx Configuration**
+   
+   Create `Client/nginx-ssl.conf`:
+   ```nginx
+   server {
+       listen 80;
+       server_name distributed-scheduler.duckdns.org;
+       return 301 https://$server_name$request_uri;
+   }
+
+   server {
+       listen 443 ssl;
+       server_name distributed-scheduler.duckdns.org;
+       
+       ssl_certificate /etc/letsencrypt/live/distributed-scheduler.duckdns.org/fullchain.pem;
+       ssl_certificate_key /etc/letsencrypt/live/distributed-scheduler.duckdns.org/privkey.pem;
+       
+       # ... rest of your nginx config
+   }
+   ```
+
+6. **Update docker-compose.prod.yml**
+   ```yaml
+   nginx:
+     volumes:
+       - /etc/letsencrypt:/etc/letsencrypt:ro
+     ports:
+       - "80:80"
+       - "443:443"
+   ```
+
+7. **Restart Nginx**
+   ```bash
+   docker compose -f docker-compose.prod.yml up -d nginx
+   ```
+
+8. **Set Up Auto-Renewal**
+   ```bash
+   # Test renewal
+   sudo certbot renew --dry-run
+   
+   # Add to crontab (renews every 12 hours)
+   echo "0 */12 * * * certbot renew --quiet --deploy-hook 'docker compose -f ~/distributed-task-scheduler/docker-compose.prod.yml restart nginx'" | sudo crontab -
+   ```
+
+**Access:** https://distributed-scheduler.duckdns.org ✅
+
+#### Option B: Cloudflare (Easiest)
+
+1. Sign up at https://dash.cloudflare.com
+2. Add your domain
+3. Update nameservers at your registrar
+4. Enable "Flexible SSL" in Cloudflare dashboard
+5. Access via HTTPS (Cloudflare handles SSL termination)
+
+**Benefits:**
+- No server configuration needed
+- Free SSL certificate
+- CDN and DDoS protection included
+
+---
+
+### DNS and Domain FAQ
+
+**Q: Will my DuckDNS domain expire?**
+A: No, as long as you update it at least once every 30 days (auto-update script handles this).
+
+**Q: Can I use HTTPS with DuckDNS?**
+A: Yes, using Let's Encrypt (see HTTPS Setup section above).
+
+**Q: What happens if my EC2 IP changes?**
+A: The auto-update cron job will detect and update DuckDNS automatically within 5 minutes.
+
+**Q: Is HTTP okay for a demo project?**
+A: Yes! Most technical reviewers understand HTTP is fine for demos. Just mention "HTTPS can be added via Let's Encrypt" in your README.
+
+**Q: How much does a custom domain cost?**
+A: DuckDNS is free. Purchased domains cost ~$12/year + $0.50/month for Route 53 hosted zone.
+
+
 
 ### Cost Optimization
 
