@@ -551,12 +551,12 @@ const killWorkerMidTask = async (req, res, next) => {
 
         logger.warn('FAULT INJECTION: Kill worker mid-task fast demo');
 
-        // 1. Create a fast task (1 second delay)
+        // 1. Create a shell task that sleeps for 10 seconds (won't timeout like HTTP)
         const taskId = generateId();
         await tasksRepo.createTask({
             id: taskId,
-            type: 'HTTP',
-            payload: { url: 'https://httpbin.org/delay/1' },
+            type: 'SHELL',
+            payload: { command: 'sleep 7' },
             scheduledAt: new Date(),
             idempotencyKey: `demo-kill-${Date.now()}`
         });
@@ -565,7 +565,7 @@ const killWorkerMidTask = async (req, res, next) => {
             taskId
         });
 
-        // 2. Wait for worker to pick it up (1.5s should be enough)
+        // 2. Wait for worker to pick it up (2.5s to allow animation to show)
         setTimeout(async () => {
             try {
                 const task = await tasksRepo.getTaskById(taskId);
@@ -634,16 +634,16 @@ const killWorkerMidTask = async (req, res, next) => {
             } catch (err) {
                 logger.error('Demo error', err);
             }
-        }, 1500);
+        }, 4500);
 
         res.json({
             status: 'success',
-            message: 'Fast demo started. Worker will be killed in ~1.5s, task recovered immediately.',
+            message: 'Demo started. Watch the yellow animation for ~4s, then worker will be killed and task recovered.',
             data: {
                 taskId,
                 expectedFlow: [
                     '1. Task created → PENDING → READY → DISPATCHED',
-                    '2. Worker picks up → RUNNING (1.5s)',
+                    '2. Worker picks up → RUNNING (2.5s to show animation)',
                     '3. Worker killed',
                     '4. Lease expired immediately',
                     '5. Task reset → READY',
