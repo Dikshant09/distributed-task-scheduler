@@ -194,9 +194,23 @@ location /socket.io/ {
 }
 ```
 
-### Azure VM Deployment
+### Cloud Deployment
 
-A deployment script is provided for Azure VMs (or any Linux server with Docker):
+Comprehensive deployment guides are available for both AWS and Azure:
+
+#### AWS EC2 Deployment
+Deploy to AWS EC2 Free Tier (t2.micro - 1 vCPU, 1 GB RAM):
+- **Guide**: [AWS Deployment Guide](docs/AWS_DEPLOYMENT_GUIDE.md)
+- **Free Tier**: 750 hours/month for 12 months
+- **Features**: EC2 Instance Connect, Elastic IP, Route 53 DNS
+
+#### Azure VM Deployment
+Deploy to Azure Free Tier (B1S - 1 vCPU, 1 GB RAM):
+- **Guide**: [Azure Deployment Guide](docs/AZURE_DEPLOYMENT_GUIDE.md)
+- **Free Tier**: 750 hours/month for 12 months + $200 credit for 30 days
+- **Features**: Azure Bastion, Static IP, Azure DNS
+
+#### Quick Deployment (Any Linux Server)
 
 ```bash
 # SSH into your VM
