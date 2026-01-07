@@ -194,23 +194,9 @@ location /socket.io/ {
 }
 ```
 
-### Cloud Deployment
+### Cloud Deployment (Any Linux Server)
 
-Comprehensive deployment guides are available for both AWS and Azure:
-
-#### AWS EC2 Deployment
-Deploy to AWS EC2 Free Tier (t2.micro - 1 vCPU, 1 GB RAM):
-- **Guide**: [AWS Deployment Guide](docs/AWS_DEPLOYMENT_GUIDE.md)
-- **Free Tier**: 750 hours/month for 12 months
-- **Features**: EC2 Instance Connect, Elastic IP, Route 53 DNS
-
-#### Azure VM Deployment
-Deploy to Azure Free Tier (B1S - 1 vCPU, 1 GB RAM):
-- **Guide**: [Azure Deployment Guide](docs/AZURE_DEPLOYMENT_GUIDE.md)
-- **Free Tier**: 750 hours/month for 12 months + $200 credit for 30 days
-- **Features**: Azure Bastion, Static IP, Azure DNS
-
-#### Quick Deployment (Any Linux Server)
+Deploy to any cloud VM (AWS EC2, Azure VM, DigitalOcean, etc.):
 
 ```bash
 # SSH into your VM
@@ -387,7 +373,6 @@ distributed-task-scheduler/
 - **Demo/Visualizer** - Interactive demonstration of distributed systems concepts
 - **Learning Tool** - Understand leader election, fault tolerance, and task scheduling
 - **Chaos Testing** - Test resilience and recovery mechanisms
-- **Interview Prep** - Explain distributed systems with a working visual example
 - **Development** - Foundation for building production task schedulers
 
 ---
