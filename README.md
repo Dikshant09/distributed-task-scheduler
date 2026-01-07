@@ -81,6 +81,10 @@ docker compose up -d --scale scheduler=3 --scale worker=5
 # http://localhost:5173
 ```
 
+> **Note:** On first startup with fresh volumes, some instances may not register due to DB initialization timing.  
+> Run `docker compose restart scheduler worker` to ensure all instances appear.
+
+
 #### Production Mode
 ```bash
 # Set secure DB password
