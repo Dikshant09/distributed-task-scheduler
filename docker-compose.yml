@@ -1,27 +1,37 @@
-version: '3.8'
-
 services:
-  etcd:
-    image: bitnami/etcd:3.6.4-debian-12-r3
-    environment:
-      - ALLOW_NONE_AUTHENTICATION=yes
-      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+  nginx:
+    build:
+      context: ./Client
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_URL: /api
     ports:
-      - "2379:2379"
-    volumes:
-      - etcd_data:/bitnami/etcd-data
+      - "5173:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - app-network
 
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: scheduler
+      POSTGRES_PASSWORD: testpassword123
       POSTGRES_DB: task_scheduler
     ports:
       - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./Server/db/migrations:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scheduler -d task_scheduler"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:alpine
@@ -29,63 +39,143 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.9
+    command:
+      - etcd
+      - --advertise-client-urls=http://etcd:2379
+      - --listen-client-urls=http://0.0.0.0:2379
+    ports:
+      - "2379:2379"
+    restart: unless-stopped
+    networks:
+      - app-network
 
   api:
-    build:
-      context: ./Server
-      dockerfile: infra/docker/api.Dockerfile
+    build: ./Server
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=development
-      - PORT=3000
-    env_file:
-      - .env
-    depends_on:
-      - postgres
-      - redis
-      - etcd
+      NODE_ENV: development
+      PORT: 3000
+      DATABASE_URL: postgres://scheduler:testpassword123@postgres:5432/task_scheduler
+      REDIS_URL: redis://redis:6379
+      ETCD_HOSTS: http://etcd:2379
+      MAX_SESSIONS: 50
+      COMPOSE_PROJECT_DIR: /app/compose
     volumes:
-      - ./Server:/app
-      - /app/node_modules
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./docker-compose.yml:/app/compose/docker-compose.yml:ro
+      - ./.env:/app/compose/.env:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      etcd:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - app-network
 
   scheduler:
-    build:
-      context: ./Server
-      dockerfile: infra/docker/scheduler.Dockerfile
-    deploy:
-      replicas: 3
+    build: ./Server
+    command: node services/scheduler-coordinator/index.js
     environment:
-      - NODE_ENV=development
-    env_file:
-      - .env
+      NODE_ENV: development
+      DATABASE_URL: postgres://scheduler:testpassword123@postgres:5432/task_scheduler
+      REDIS_URL: redis://redis:6379
+      ETCD_HOSTS: http://etcd:2379
     depends_on:
-      - postgres
-      - redis
-      - etcd
-    volumes:
-      - ./Server:/app
-      - /app/node_modules
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      etcd:
+        condition: service_started
+    restart: 'no'  # Killed instances stay dead until Reset Instances
+    networks:
+      - app-network
+    # Scale with: docker compose up --scale scheduler=3
 
   worker:
-    build:
-      context: ./Server
-      dockerfile: infra/docker/worker.Dockerfile
-    deploy:
-      replicas: 3
+    build: ./Server
+    command: node worker/index.js
     environment:
-      - NODE_ENV=development
-    env_file:
-      - .env
+      NODE_ENV: development
+      DATABASE_URL: postgres://scheduler:testpassword123@postgres:5432/task_scheduler
+      REDIS_URL: redis://redis:6379
     depends_on:
-      - postgres
-      - redis
-      - etcd
-    volumes:
-      - ./Server:/app
-      - /app/node_modules
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: 'no'  # Killed instances stay dead until Reset Instances
+    networks:
+      - app-network
+    # Scale with: docker compose up --scale worker=5
+
+  dispatcher:
+    build: ./Server
+    command: node services/dispatcher/index.js
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgres://scheduler:testpassword123@postgres:5432/task_scheduler
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  recovery:
+    build: ./Server
+    command: node services/recovery/index.js
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgres://scheduler:testpassword123@postgres:5432/task_scheduler
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  cleanup:
+    build: ./Server
+    command: node scripts/session-cleanup.js
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgres://scheduler:testpassword123@postgres:5432/task_scheduler
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
 
 volumes:
-  etcd_data:
   pg_data:
   redis_data:
+
+networks:
+  app-network:
+    driver: bridge
