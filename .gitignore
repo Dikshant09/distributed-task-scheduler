@@ -2,4 +2,5 @@ Client/node_modules
 Server/node_modules
 logs/
 .env
+.env.prod
 *.log
