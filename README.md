@@ -2,7 +2,7 @@
 
 A distributed task scheduler with **real-time visualization** designed as an interactive demo and learning tool for distributed systems concepts.
 
-![System Topology](https://raw.githubusercontent.com/Dikshant09/distributed-task-scheduler/main/docs/assets/topology-preview.png)
+![System Topology](assets/topology-preview.png)
 
 > 🎯 **Purpose**: This is an educational visualizer, not a production scheduler. Built to demonstrate leader election, lease-based execution, fault tolerance, and automatic failure recovery—concepts you can see live in the browser.
 
